@@ -273,7 +273,8 @@ def _invoke_claude(
 
     if proc.returncode != 0:
         raise _SubprocessError(
-            f"claude CLI exit={proc.returncode} stderr={proc.stderr[:500]!r}"
+            f"claude CLI exit={proc.returncode} "
+            f"stderr={proc.stderr[:500]!r} stdout={proc.stdout[:500]!r}"
         )
     return proc.stdout
 
