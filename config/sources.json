@@ -8,15 +8,6 @@
     "user_agent_required": true,
     "notes": "8-K filings = official material events. Fastest legal source; highest confidence."
   },
-  "yahoo": {
-    "type": "library",
-    "confidence": "high",
-    "ticker_specific": true,
-    "enabled": false,
-    "library": "yfinance",
-    "method": "Ticker(symbol).news",
-    "notes": "DISABLED 2026-04-28: yfinance returns faulty response from Yahoo (anti-bot block). Most Yahoo Finance content is covered via Finviz aggregation + Google News. Re-enable when yfinance lib catches up."
-  },
   "finviz": {
     "type": "scrape",
     "confidence": "high",

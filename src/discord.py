@@ -41,7 +41,14 @@ _SENTIMENT_EMOJI = {
 
 
 class DiscordPostError(Exception):
-    pass
+    """`retryable=True` means the failure was transient (5xx/429/network) — the
+    pipeline should NOT mark the item seen so the next run retries.
+    `retryable=False` means permanent (4xx other than 429) — mark seen to avoid
+    a permanent failure loop."""
+
+    def __init__(self, message: str, *, retryable: bool):
+        super().__init__(message)
+        self.retryable = retryable
 
 
 def get_webhook_url() -> Optional[str]:
@@ -81,12 +88,17 @@ def post_discord(content: str, *, webhook_url: Optional[str] = None) -> bool:
         if resp.status_code == 429 or 500 <= resp.status_code < 600:
             last_err = f"status={resp.status_code} body={resp.text[:200]!r}"
             continue
-        # permanent client error: do not retry
+        # permanent client error (4xx excl 429): do not retry, mark seen to avoid loop
         raise DiscordPostError(
-            f"discord webhook non-2xx status={resp.status_code} body={resp.text[:200]!r}"
+            f"discord webhook non-2xx status={resp.status_code} body={resp.text[:200]!r}",
+            retryable=False,
         )
 
-    raise DiscordPostError(f"discord webhook failed after retries: {last_err}")
+    # All retries exhausted on transient failures — caller should retry next run
+    raise DiscordPostError(
+        f"discord webhook failed after retries: {last_err}",
+        retryable=True,
+    )
 
 
 def format_alert(

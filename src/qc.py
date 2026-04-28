@@ -1,8 +1,8 @@
-"""QC signal logger. Two artifacts:
+"""QC signal logger. Three artifacts:
 
-1. processed-log.ndjson — every item we touched + verdict + decision (append-only)
-2. daily-report-YYYY-MM-DD.json — per-day cumulative counters (B4 fix). Each run
-   merges into the day's report rather than overwriting; runs counter increments.
+1. processed-log-YYYY-MM-DD.ndjson — every item we touched + verdict (M6: rotated daily)
+2. daily-report-YYYY-MM-DD.json — per-day cumulative counters (B4)
+3. record_llm_call / record_source_anomaly — explicit observability counters (C4 / M3)
 
 Per harness rule 'Fail Loud': we never silently drop. Every drop has a reason."""
 from __future__ import annotations
@@ -20,19 +20,23 @@ logger = logging.getLogger(__name__)
 
 
 class QCLogger:
-    def __init__(self, processed_log: Path, daily_report_dir: Path):
-        processed_log.parent.mkdir(parents=True, exist_ok=True)
+    def __init__(self, processed_log_dir: Path, daily_report_dir: Path):
+        # M6: per-day processed log (was: single file growing unbounded). Rotated
+        # by date; downstream tooling globs processed-log-*.ndjson.
+        today = datetime.now(timezone.utc).date().isoformat()
+        processed_log_dir.mkdir(parents=True, exist_ok=True)
         daily_report_dir.mkdir(parents=True, exist_ok=True)
-        self.processed_log_path = processed_log
+
+        self.processed_log_path = processed_log_dir / f"processed-log-{today}.ndjson"
         self.daily_report_dir = daily_report_dir
         self._counters: Counter[str] = Counter()
-        self._fp = open(processed_log, "a", encoding="utf-8")
+        self._fp = open(self.processed_log_path, "a", encoding="utf-8")
 
     def log(
         self,
         *,
         item: NewsItem,
-        verdict: str,  # SENT / DROP / REVIEW / DRY_RUN_SENT / DISCORD_FAIL
+        verdict: str,  # SENT / DROP / REVIEW / DRY_RUN_SENT / DISCORD_FAIL / DEFER
         tier: Optional[str] = None,
         reasons: Optional[list[str]] = None,
         details: Optional[Dict[str, Any]] = None,
@@ -57,6 +61,29 @@ class QCLogger:
             self._counters[f"tier:{tier}"] += 1
         for reason in reasons or []:
             self._counters[f"reason:{reason}"] += 1
+
+    def record_llm_call(self, role: str) -> None:
+        """C4: track LLM call volume per role.
+
+        role: 'primary' | 'auditor' | 'translate'. Counts include retries
+        (each subprocess invocation = one call). Surfaced in daily-report so
+        a runaway retry loop or quota burn can be spotted before the bill."""
+        self._counters[f"llm_call:{role}"] += 1
+
+    def record_source_anomaly(self, source: str, error: str) -> None:
+        """M3: track source fetch failures. Caller (pipeline) catches the
+        exception and calls this — turns a silent return-empty into a counted,
+        grep-able signal in the daily report."""
+        self._counters[f"source_anomaly:{source}"] += 1
+        # Also write a one-line audit trail to processed-log via a synthetic record
+        record = {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "kind": "source_anomaly",
+            "source": source,
+            "error": error[:300],
+        }
+        self._fp.write(json.dumps(record, ensure_ascii=False) + "\n")
+        self._fp.flush()
 
     def flush_daily_report(self) -> None:
         """Merge this run's counters into the day's report file. Runs accumulate."""

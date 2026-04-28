@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime, timezone
 from typing import List
 
@@ -17,6 +18,10 @@ EDGAR_URL_TEMPLATE = (
 )
 USER_AGENT = "stock-news-radar marshal604@gmail.com"
 TIMEOUT_SEC = 10.0
+# M3: 8-K is a critical signal; one-off SEC infra hiccup shouldn't lose the alert.
+# Retry once with a small backoff before raising — pipeline catches and counts it
+# as a source_anomaly so silent zero-fetches stop being silent.
+RETRY_BACKOFF_SEC = 2.0
 
 
 class EdgarSource(Source):
@@ -30,16 +35,33 @@ class EdgarSource(Source):
             return []
 
         url = EDGAR_URL_TEMPLATE.format(cik=cik.lstrip("0").zfill(10))
-        try:
-            resp = httpx.get(
-                url,
-                headers={"User-Agent": USER_AGENT, "Accept": "application/atom+xml"},
-                timeout=TIMEOUT_SEC,
-            )
-            resp.raise_for_status()
-        except Exception as e:
-            logger.warning("edgar fetch failed for %s: %s", ticker, e)
-            return []
+        last_err: Exception | None = None
+        resp = None
+        success = False
+        for attempt in range(2):
+            try:
+                resp = httpx.get(
+                    url,
+                    headers={"User-Agent": USER_AGENT, "Accept": "application/atom+xml"},
+                    timeout=TIMEOUT_SEC,
+                )
+                resp.raise_for_status()
+                success = True
+                break
+            except Exception as e:
+                last_err = e
+                if attempt == 0:
+                    logger.warning(
+                        "edgar fetch %s attempt 1 failed (%s) — retrying in %.1fs",
+                        ticker, e, RETRY_BACKOFF_SEC,
+                    )
+                    time.sleep(RETRY_BACKOFF_SEC)
+        if not success:
+            # Raise so pipeline records source_anomaly. Silent return [] would
+            # have allowed an 8-K to go undetected.
+            raise RuntimeError(
+                f"edgar fetch failed for {ticker} after retry: {last_err}"
+            ) from last_err
 
         feed = feedparser.parse(resp.content)
         items: List[NewsItem] = []

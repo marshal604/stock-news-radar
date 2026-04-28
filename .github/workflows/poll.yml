@@ -98,6 +98,6 @@ jobs:
           name: qc-${{ github.run_id }}
           path: |
             qc/daily-report-*.json
-            data/processed-log.ndjson
+            data/processed-log-*.ndjson
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 14

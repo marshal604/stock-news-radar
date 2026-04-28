@@ -25,7 +25,10 @@ logger = logging.getLogger(__name__)
 # use Sonnet — cheaper, and a different model gives stronger differential independence.
 PRIMARY_MODEL = os.getenv("RADAR_PRIMARY_MODEL", "claude-opus-4-7")
 SECONDARY_MODEL = os.getenv("RADAR_SECONDARY_MODEL", "claude-sonnet-4-6")
-DEFAULT_TIMEOUT = 180
+# C3: lowered from 180 → 90s. Worst case per item: 90s × (1 + MAX_RETRIES) = 270s
+# for primary, plus same for auditor = 540s max per item. With max_items_per_run=20,
+# we're well within GitHub Actions 10min timeout-minutes ceiling.
+DEFAULT_TIMEOUT = 90
 TRANSLATE_TIMEOUT = 60
 MAX_RETRIES = 2
 

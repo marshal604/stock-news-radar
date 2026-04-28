@@ -10,8 +10,18 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from src.pipeline import PipelineConfig, _process_item
+from src.qc import QCLogger
 from src.sources.base import NewsItem
+
+
+@pytest.fixture
+def qc(tmp_path):
+    logger = QCLogger(processed_log_dir=tmp_path, daily_report_dir=tmp_path)
+    yield logger
+    logger.close()
 
 
 def _competitor_item() -> NewsItem:
@@ -36,25 +46,27 @@ def _config() -> PipelineConfig:
         keywords={},
         sources_config={},
         state_db=Path("/tmp/stock-news-radar-test.sqlite"),
-        processed_log=Path("/tmp/stock-news-radar-test.ndjson"),
+        processed_log_dir=Path("/tmp"),
         daily_report_dir=Path("/tmp"),
     )
 
 
-def test_competitor_source_routes_to_review_without_llm():
-    decision, verdict = _process_item(item=_competitor_item(), config=_config())
+def test_competitor_source_routes_to_review_without_llm(qc):
+    decision, verdict = _process_item(item=_competitor_item(), config=_config(), qc=qc)
     assert decision.tier == "REVIEW"
     assert decision.primary_ticker == "UUUU"
     assert "competitor_signal_data_collection" in decision.reasons
     # No LLM call → no verdict
     assert verdict is None
+    # And no llm_call counter increment
+    assert "llm_call:primary" not in qc._counters
 
 
-def test_competitor_gate_runs_before_candidate_match():
+def test_competitor_gate_runs_before_candidate_match(qc):
     """Article doesn't even need to mention UUUU — gate fires on source name alone."""
     item = _competitor_item()
     # Strip any UUUU mention from text just to be sure
     item = NewsItem(**{**item.__dict__, "raw_text": "Cameco news, no other tickers."})
-    decision, verdict = _process_item(item=item, config=_config())
+    decision, verdict = _process_item(item=item, config=_config(), qc=qc)
     assert decision.tier == "REVIEW"
     assert verdict is None

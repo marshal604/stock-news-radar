@@ -15,6 +15,11 @@ logger = logging.getLogger(__name__)
 URL_TEMPLATE = "https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
 USER_AGENT = "Mozilla/5.0 stock-news-radar/0.1"
 TIMEOUT_SEC = 10.0
+# M2: HEAD-resolve Google News redirect URLs to canonical publisher URLs.
+# Two queries returning the same article via different Google redirects would
+# otherwise give different url_hash → cross-query dedup misses. Also gives
+# users a single click-through instead of two-hop.
+RESOLVE_TIMEOUT_SEC = 3.0
 
 
 class GoogleNewsSource(Source):
@@ -48,10 +53,14 @@ class GoogleNewsSource(Source):
             feed = feedparser.parse(resp.content)
             for entry in feed.entries:
                 title = (entry.get("title") or "").strip()
-                link = (entry.get("link") or "").strip()
-                if not title or not link or link in seen_urls:
+                raw_link = (entry.get("link") or "").strip()
+                if not title or not raw_link:
                     continue
-                seen_urls.add(link)
+                # Resolve Google News redirect to canonical publisher URL (M2).
+                final_link = _resolve_redirect(raw_link)
+                if final_link in seen_urls:
+                    continue
+                seen_urls.add(final_link)
                 published = _parse_pubdate(entry)
                 if published is None:
                     continue
@@ -59,7 +68,7 @@ class GoogleNewsSource(Source):
                 publisher = _extract_publisher(entry)
                 items.append(
                     NewsItem(
-                        url=link,
+                        url=final_link,
                         title=title,
                         raw_text=f"{title}\n\n{summary}",
                         published_at=published,
@@ -70,6 +79,22 @@ class GoogleNewsSource(Source):
                     )
                 )
         return items
+
+
+def _resolve_redirect(url: str) -> str:
+    """HEAD-resolve a Google News redirect to its final publisher URL.
+
+    Falls back to the original URL on timeout or any error — we never want
+    redirect resolution to block ingestion. Pure best-effort canonicalization."""
+    if "news.google.com" not in url:
+        return url  # already canonical
+    try:
+        with httpx.Client(timeout=RESOLVE_TIMEOUT_SEC, follow_redirects=True) as client:
+            resp = client.head(url)
+            return str(resp.url)
+    except Exception as e:
+        logger.debug("redirect resolve failed for %s: %s", url[:60], e)
+        return url
 
 
 def _parse_pubdate(entry) -> datetime | None:

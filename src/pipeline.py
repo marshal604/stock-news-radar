@@ -1,11 +1,11 @@
 """6-phase pipeline orchestrator.
 
-Phase 1 Collect      → all sources fetch
-Phase 2 Dedup        → SQLite seen + freshness window
+Phase 1 Collect      → all sources fetch (M3: source_anomaly counter on failure)
+Phase 2 Dedup+Cap    → SQLite seen + freshness window + C3 max_items_per_run
 Phase 3 Substring    → LLM mention_quotes verbatim check
 Phase 4 Differential → keyword path A vs LLM path B; tier from alert-rules.md
-Phase 5 Self-consist → re-run LLM with auditor phrasing for HIGH and MEDIUM (A1)
-Phase 6 Discord post → render + POST per tier"""
+Phase 5 Self-consist → re-run LLM with auditor phrasing for HIGH and MEDIUM
+Phase 6 Discord post → render + POST per tier (C1: mark_seen only on success)"""
 from __future__ import annotations
 
 import dataclasses
@@ -26,6 +26,7 @@ from .oracles import (
     verify_quotes,
 )
 from .oracles.keyword import KeywordScore
+from .oracles.llm import numeric_guardrail_pass
 from .oracles.substring import SubstringResult
 from .qc import QCLogger
 from .sources import (
@@ -41,6 +42,10 @@ from .text_utils import term_present
 
 logger = logging.getLogger(__name__)
 
+# C3: source-confidence priority for the max_items_per_run cap. Critical first
+# (8-K filings can't wait), then ticker-feed editorial, then keyword macro.
+_SOURCE_PRIORITY = {"critical": 0, "high": 1, "medium": 2}
+
 
 @dataclass
 class PipelineConfig:
@@ -48,12 +53,17 @@ class PipelineConfig:
     keywords: dict
     sources_config: dict
     state_db: Path
-    processed_log: Path
+    processed_log_dir: Path
     daily_report_dir: Path
     dry_run: bool = False
     # User spec: "只抓當天的新聞". Implemented as 24-hour rolling window to avoid
     # the midnight-UTC edge case where a 23:55 UTC item drops at 00:05 UTC.
     max_age_hours: int = 24
+    # C3: hard ceiling on items processed per run. Worst-case LLM time per item
+    # = ~540s (primary + auditor with retries); 20 items × 540s ≈ 3 hours, but
+    # GH Actions kills at 10min. Cap at 20 so we always leave time for commit-back.
+    # Items beyond cap stay un-marked — next run picks them up.
+    max_items_per_run: int = 20
 
 
 @dataclass
@@ -63,7 +73,7 @@ class TierDecision:
     tier: str  # CRITICAL / HIGH / MEDIUM / REVIEW / DROP
     reasons: List[str] = field(default_factory=list)
     primary_ticker: Optional[str] = None
-    summary_caveat: bool = False  # B6: True when LLM summary may be hallucinated
+    summary_caveat: bool = False
 
 
 def build_sources(sources_config: dict) -> List[Source]:
@@ -86,12 +96,20 @@ def run(config: PipelineConfig) -> dict:
     """Execute pipeline. Returns summary stats."""
     sources = build_sources(config.sources_config)
     store = SeenStore(config.state_db)
-    qc = QCLogger(config.processed_log, config.daily_report_dir)
+    qc = QCLogger(config.processed_log_dir, config.daily_report_dir)
 
-    stats = {"collected": 0, "fresh": 0, "sent": 0, "review": 0, "dropped": 0}
+    stats = {
+        "collected": 0,
+        "fresh": 0,
+        "sent": 0,
+        "would_send": 0,    # N4: separate counter for dry-run
+        "review": 0,
+        "dropped": 0,
+        "deferred": 0,      # C3: items skipped due to max_items_per_run
+    }
 
     try:
-        # Phase 1: Collect
+        # Phase 1: Collect (M3: source failure → counted anomaly, not silent return)
         all_items: List[NewsItem] = []
         for ticker, meta in config.tickers.items():
             for source in sources:
@@ -99,12 +117,13 @@ def run(config: PipelineConfig) -> dict:
                     items = source.fetch(ticker, meta)
                 except Exception as e:
                     logger.warning("%s.fetch(%s) raised: %s", source.name, ticker, e)
+                    qc.record_source_anomaly(source.name, str(e))
                     continue
                 all_items.extend(items)
                 logger.info("collected %d from %s for %s", len(items), source.name, ticker)
         stats["collected"] = len(all_items)
 
-        # Phase 2: Dedup + freshness filter
+        # Phase 2a: freshness + dedup
         cutoff = datetime.now(timezone.utc) - timedelta(hours=config.max_age_hours)
         fresh: List[NewsItem] = []
         for item in all_items:
@@ -117,14 +136,35 @@ def run(config: PipelineConfig) -> dict:
                 stats["dropped"] += 1
                 continue
             fresh.append(item)
+
+        # Phase 2b: C3 cap. Sort by source priority + recency, take first N.
+        fresh.sort(
+            key=lambda i: (
+                _SOURCE_PRIORITY.get(i.source_confidence, 9),
+                -i.published_at.timestamp(),
+            )
+        )
+        if len(fresh) > config.max_items_per_run:
+            overflow = fresh[config.max_items_per_run:]
+            fresh = fresh[:config.max_items_per_run]
+            logger.warning(
+                "backlog: %d items deferred (max_items_per_run=%d) — picked up next run",
+                len(overflow),
+                config.max_items_per_run,
+            )
+            for item in overflow:
+                qc.log(item=item, verdict="DEFER", reasons=["max_items_per_run_exceeded"])
+                # NB: do NOT mark_seen — these need to be re-processed next run
+            stats["deferred"] = len(overflow)
         stats["fresh"] = len(fresh)
 
         # Phase 3-6 per item
         for item in fresh:
-            decision, verdict = _process_item(item=item, config=config)
+            decision, verdict = _process_item(item=item, config=config, qc=qc)
 
+            handled = True  # default for DROP/REVIEW (decision recorded, no Discord side-effect)
             if decision.tier in ("CRITICAL", "HIGH", "MEDIUM"):
-                _send(item, verdict, decision, qc, config, stats)
+                handled = _send(item, verdict, decision, qc, config, stats)
             elif decision.tier == "REVIEW":
                 qc.log(
                     item=item,
@@ -143,8 +183,10 @@ def run(config: PipelineConfig) -> dict:
                 )
                 stats["dropped"] += 1
 
-            # B1: dry_run never marks seen, so re-runs are reproducible
-            if not config.dry_run:
+            # C1: mark_seen only when item was successfully handled. Transient
+            # Discord failures leave the item un-marked so the next run retries.
+            # B1: dry_run never marks — re-runs are reproducible.
+            if handled and not config.dry_run:
                 store.mark_seen(item)
 
         # Daily housekeeping (only on real runs)
@@ -159,12 +201,15 @@ def run(config: PipelineConfig) -> dict:
     return stats
 
 
-def _process_item(*, item: NewsItem, config: PipelineConfig) -> Tuple[TierDecision, Optional[LLMVerdict]]:
-    """Run phases 3-5 for one item. Returns (TierDecision, primary verdict for QC details)."""
+def _process_item(
+    *, item: NewsItem, config: PipelineConfig, qc: QCLogger
+) -> Tuple[TierDecision, Optional[LLMVerdict]]:
+    """Run phases 3-5 for one item. qc is passed for LLM call instrumentation (C4)."""
+    target_tickers = _candidate_tickers(item, config)
+    if not target_tickers:
+        return TierDecision(tier="DROP", reasons=["no_candidate_ticker"]), None
+
     # T1 competitor data collection: short-circuit before any LLM work.
-    # Items from competitor_finviz are tagged with target ticker as a SIGNAL
-    # CANDIDATE, not as content about the target. Forced to REVIEW so we
-    # accumulate ground-truth data without burning quota or polluting Discord.
     if item.source == "competitor_finviz":
         return (
             TierDecision(
@@ -175,14 +220,9 @@ def _process_item(*, item: NewsItem, config: PipelineConfig) -> Tuple[TierDecisi
             None,
         )
 
-    target_tickers = _candidate_tickers(item, config)
-    if not target_tickers:
-        return TierDecision(tier="DROP", reasons=["no_candidate_ticker"]), None
-
-    # B7: EDGAR fast-path runs BEFORE keyword computation. EDGAR is CIK-bound so
-    # collision/exclude_strict cannot apply — saves a wasted scoring pass.
+    # B7: EDGAR fast-path runs BEFORE keyword computation (CIK-bound, no collision possible)
     if item.source == "edgar":
-        return _critical_path(item, target_tickers, config)
+        return _critical_path(item, target_tickers, qc)
 
     # Path A: keyword scoring (deterministic)
     keyword_results = {
@@ -202,6 +242,7 @@ def _process_item(*, item: NewsItem, config: PipelineConfig) -> Tuple[TierDecisi
         )
 
     # Path B: LLM classifier (Opus)
+    qc.record_llm_call("primary")
     try:
         primary_verdict = classify_with_llm(
             tickers=target_tickers,
@@ -216,10 +257,19 @@ def _process_item(*, item: NewsItem, config: PipelineConfig) -> Tuple[TierDecisi
         logger.warning("LLM classify failed for %s: %s", item.url, e)
         return TierDecision(tier="REVIEW", reasons=[f"llm_error:{e}"]), None
 
-    # Substring oracle
     substring_result = verify_quotes(primary_verdict, item.raw_text)
 
-    # Tier decision (pure function — testable in isolation, see test_pipeline_tier_decision.py)
+    # M4: numeric guardrail on classifier-emitted chinese_summary. Catches LLM
+    # inventing monetary amounts/dates not in the source. We don't drop the alert
+    # (relevance is still likely valid) — just flag the summary as untrustworthy
+    # so format_alert prints '[摘要待確認]' instead of the hallucinated text.
+    summary_caveat = not numeric_guardrail_pass(item.raw_text, primary_verdict.chinese_summary)
+    if summary_caveat:
+        logger.warning(
+            "classifier_numeric_hallucination url=%s title=%r summary=%r",
+            item.url, item.title, primary_verdict.chinese_summary,
+        )
+
     decision = decide_tier(
         source_confidence=item.source_confidence,
         primary_verdict=primary_verdict,
@@ -227,9 +277,17 @@ def _process_item(*, item: NewsItem, config: PipelineConfig) -> Tuple[TierDecisi
         substring_result=substring_result,
     )
 
-    # Phase 5: Self-consistency on HIGH and MEDIUM (A1: google_news is most LLM-sensitive)
+    # Inject summary_caveat + reason into the decision
+    if summary_caveat and decision.tier in ("HIGH", "MEDIUM"):
+        decision = dataclasses.replace(
+            decision,
+            summary_caveat=True,
+            reasons=decision.reasons + ["classifier_numeric_hallucination"],
+        )
+
+    # Phase 5: Self-consistency on HIGH and MEDIUM
     if decision.tier in ("HIGH", "MEDIUM"):
-        decision = _apply_self_consistency(item, target_tickers, primary_verdict, decision)
+        decision = _apply_self_consistency(item, target_tickers, primary_verdict, decision, qc)
 
     return decision, primary_verdict
 
@@ -241,16 +299,7 @@ def decide_tier(
     keyword_results: Dict[str, KeywordScore],
     substring_result: SubstringResult,
 ) -> TierDecision:
-    """Pure function: oracle outputs → tier verdict per alert-rules.md.
-
-    Inputs:
-        source_confidence: 'high' | 'medium' | 'critical'
-        primary_verdict:   LLM oracle output
-        keyword_results:   per-ticker KeywordScore from path A
-        substring_result:  mention_quotes verbatim verification
-
-    Returns TierDecision. EDGAR critical path is handled separately in _critical_path().
-    """
+    """Pure function: oracle outputs → tier verdict per alert-rules.md."""
     relevant = [
         t for t, rel in primary_verdict.ticker_relevance.items()
         if rel.is_relevant and rel.relevance_type != "buzzword-list-only"
@@ -259,11 +308,7 @@ def decide_tier(
         return TierDecision(tier="DROP", reasons=["llm_no_relevant_or_buzzword_only"])
 
     if not primary_verdict.should_alert:
-        # Schema-gap watch: when LLM marks a ticker is_relevant=true with
-        # relevance_type in {company-specific, sector-policy} BUT vetoes via
-        # should_alert=false, that is the LLM hiding a value judgment in a
-        # boolean. Counted separately so we can data-drive the decision to
-        # expand relevance_type buckets (modification A in design notes).
+        # See alert-rules.md §schema-gap-watch
         reasons = ["llm_should_not_alert"]
         if _detect_suspicious_should_alert_veto(primary_verdict):
             reasons.append("schema_gap_suspicious_veto")
@@ -275,7 +320,6 @@ def decide_tier(
 
     primary_ticker = relevant[0]
 
-    # B5: substring partial failure (some quotes verbatim, some hallucinated) → REVIEW
     if not substring_result.ok:
         if substring_result.all_failed_for(primary_ticker):
             return TierDecision(
@@ -289,7 +333,6 @@ def decide_tier(
             primary_ticker=primary_ticker,
         )
 
-    # Differential: keyword path A vs LLM path B
     kw_pass = any(keyword_results[t].passed for t in relevant if t in keyword_results)
 
     if source_confidence == "high":
@@ -320,12 +363,9 @@ def _apply_self_consistency(
     target_tickers: List[str],
     primary_verdict: LLMVerdict,
     decision: TierDecision,
+    qc: QCLogger,
 ) -> TierDecision:
-    """Run auditor pass (Sonnet) and downgrade tier on disagreement.
-
-    B2 fix: auditor LLM error is a signal, not noise — downgrade to REVIEW.
-    A1 change: applies to MEDIUM as well as HIGH (google_news is more LLM-sensitive
-    than ticker-feed sources)."""
+    qc.record_llm_call("auditor")
     try:
         auditor_verdict = classify_with_llm(
             tickers=target_tickers,
@@ -354,27 +394,20 @@ def _apply_self_consistency(
         return dataclasses.replace(
             decision, tier="MEDIUM", reasons=decision.reasons + ["self_consistency_mismatch"]
         )
-    # MEDIUM with inconsistency → REVIEW (keep human in the loop)
     return dataclasses.replace(
         decision, tier="REVIEW", reasons=decision.reasons + ["self_consistency_mismatch"]
     )
 
 
 def _critical_path(
-    item: NewsItem, tickers: List[str], config: PipelineConfig
+    item: NewsItem, tickers: List[str], qc: QCLogger
 ) -> Tuple[TierDecision, Optional[LLMVerdict]]:
     """SEC EDGAR fast-path. CIK-bound, so relevance is guaranteed.
-
-    Trust hierarchy: 8-K is the company's own legal filing — we always alert.
-    Per review item #3a: LLM is used ONLY to translate the title — never to
-    classify, never to summarize. Pure translation has a numeric guardrail (any
-    digit in the translation must come from the title) and falls back to a safe
-    template string on hallucination or LLM failure. This is more conservative
-    than the previous classify-and-caveat approach: there is no path by which a
-    hallucinated number reaches Discord."""
+    LLM is used ONLY to translate the title; numeric guardrail prevents fabrication."""
     from .oracles.schema import LLMVerdict as _Verdict, TickerRelevance
 
     primary_ticker = tickers[0]
+    qc.record_llm_call("translate")
     chinese_summary = translate_title_to_chinese(item.title)
 
     verdict = _Verdict(
@@ -406,14 +439,7 @@ def _critical_path(
 
 
 def _detect_suspicious_should_alert_veto(verdict: LLMVerdict) -> bool:
-    """Detect the schema-gap pattern: LLM said relevant + company-specific/sector-policy
-    yet vetoed via should_alert=false.
-
-    This pattern means the LLM has a value judgment ('not material enough', 'just a
-    recap', '13F flow doesn't matter') but no schema bucket fits, so it leaks the
-    decision through should_alert. Counted in QC; high frequency (>20% of fresh
-    over a week) is the signal that relevance_type buckets need expanding (see
-    alert-rules.md §schema-gap-watch)."""
+    """See alert-rules.md §schema-gap-watch."""
     return any(
         rel.is_relevant and rel.relevance_type in ("company-specific", "sector-policy")
         for rel in verdict.ticker_relevance.values()
@@ -421,11 +447,6 @@ def _detect_suspicious_should_alert_veto(verdict: LLMVerdict) -> bool:
 
 
 def _candidate_tickers(item: NewsItem, config: PipelineConfig) -> List[str]:
-    """Determine which configured tickers might be discussed in this item.
-
-    B3: uses term_present (word-boundary aware) to avoid 'TEM' matching 'system' or
-    'Templeton'. Without this gate, every news article containing 'system' would
-    burn LLM quota. Disambiguation still happens downstream via keyword oracle."""
     if item.ticker_hint and item.ticker_hint in config.tickers:
         return [item.ticker_hint]
     candidates: List[str] = []
@@ -466,10 +487,14 @@ def _send(
     qc: QCLogger,
     config: PipelineConfig,
     stats: dict,
-) -> None:
+) -> bool:
+    """Render + POST. C1: returns True if the item should be marked seen.
+
+    True  → SENT (2xx) | DRY_RUN | permanent 4xx (mark to avoid loop)
+    False → transient failure (5xx/429/network after retries) — try again next run"""
     if verdict is None or decision.primary_ticker is None:
         logger.error("_send called without verdict/primary_ticker; tier=%s", decision.tier)
-        return
+        return True  # nothing to retry, mark seen
     content = format_alert(
         tier=decision.tier,
         item=item,
@@ -486,25 +511,23 @@ def _send(
             reasons=decision.reasons,
             details=_verdict_details(verdict),
         )
-        stats["sent"] += 1
-        return
+        stats["would_send"] += 1   # N4: dry_run uses separate counter
+        return True
 
     try:
         post_discord(content)
-        qc.log(
-            item=item,
-            verdict="SENT",
-            tier=decision.tier,
-            reasons=decision.reasons,
-            details=_verdict_details(verdict),
-        )
+        qc.log(item=item, verdict="SENT", tier=decision.tier, reasons=decision.reasons,
+               details=_verdict_details(verdict))
         stats["sent"] += 1
+        return True
     except DiscordPostError as e:
-        logger.error("discord post failed: %s", e)
+        logger.error("discord post failed (retryable=%s): %s", e.retryable, e)
         qc.log(
             item=item,
             verdict="DISCORD_FAIL",
             tier=decision.tier,
-            reasons=decision.reasons + [str(e)],
+            reasons=decision.reasons + [f"retryable={e.retryable}", str(e)[:200]],
             details=_verdict_details(verdict),
         )
+        # Retryable → don't mark seen; permanent → mark seen to avoid loop
+        return not e.retryable
