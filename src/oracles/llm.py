@@ -50,7 +50,19 @@ CRITICAL RULES:
    - "low": background context only
 5. Ticker disambiguation: TEM = Tempus AI on NASDAQ. If article refers to "Templeton Emerging Markets" or "TEMPO Automation" or other TEM-named entities, set is_relevant=false for TEM.
 6. Ticker disambiguation: UUUU = Energy Fuels on NYSE. Almost no collisions.
-7. chinese_summary: ONE concise sentence in 繁體中文 (30-50 字), describing the news + likely impact direction on the target ticker.
+7. chinese_summary 規則（必讀，用戶看了就要知道發生什麼）：
+   a. 必須說具體事實：誰、做了什麼、數字 / 產品名 / 夥伴名 / 機構名
+   b. 禁止只說新聞「類別」：不准寫「屬例行揭露」「為一般公告」「屬公司治理事項」「規律性披露」
+   c. 禁止含糊評論：不准寫「影響中性」「值得關注」「有待觀察」「對股價影響有限」「需持續追蹤」
+   d. 影響方向（如有）放句尾，不能取代具體內容
+   e. 原文若真的只有標題沒內文（如純 RSS link、interstitial）→ 明說「來源僅提供標題，未含內文」── 絕不編造或用通用語掩蓋
+   f. 30-50 字繁體中文一句話
+   範例對比：
+     壞：「公司提交財報文件，屬例行揭露，影響中性」
+     好：「公司公布 Q1 營收 $35M 超預期 12%，鈾與稀土產量雙雙增長」
+     壞：「Tempus AI 公佈委託書摘要，屬例行公司治理揭露，影響中性」
+     好：「Tempus AI 委託書揭露董事會改組與高管薪酬調整，含股東投票議案」
+     可：「來源僅提供 Tempus AI 委託書摘要連結，未含內文細節」
 
 Schema (output exactly this shape):
 {
@@ -94,10 +106,12 @@ Output ONLY a JSON object with the following schema (no prose, no markdown):
   "category": "earnings"|"regulatory"|"M&A"|"analyst"|"rumor"|"macro"|"partnership",
   "should_alert": <bool>,
   "alert_tier": "high"|"medium"|"low",
-  "chinese_summary": "<one sentence in 繁體中文 describing news + likely direction on ticker>"
+  "chinese_summary": "<繁體中文 30-50 字>"
 }
 
-mention_quotes MUST be verbatim substrings of the article. should_alert=true only if relevance_type is company-specific or sector-policy. Disambiguate TEM=Tempus AI (not Templeton Emerging Markets / TEMPO)."""
+mention_quotes MUST be verbatim substrings of the article. should_alert=true only if relevance_type is company-specific or sector-policy. Disambiguate TEM=Tempus AI (not Templeton Emerging Markets / TEMPO).
+
+chinese_summary：必須描述具體事實（誰、做了什麼、數字、夥伴）。禁用 hedge 語（「屬例行」「影響中性」「值得關注」）。原文若無內文，直接寫「來源僅提供標題，未含內文」，不得編造。"""
 
 
 _TRANSLATE_SYSTEM = """你是一個嚴謹的翻譯員。把英文標題翻譯成繁體中文。
