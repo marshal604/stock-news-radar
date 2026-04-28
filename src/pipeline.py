@@ -1,19 +1,19 @@
 """6-phase pipeline orchestrator.
 
 Phase 1 Collect      → all sources fetch
-Phase 2 Dedup        → SQLite seen + date='today' filter
-Phase 3 Substring    → LLM mention_quotes verbatim check (CRITICAL gate)
+Phase 2 Dedup        → SQLite seen + freshness window
+Phase 3 Substring    → LLM mention_quotes verbatim check
 Phase 4 Differential → keyword path A vs LLM path B; tier from alert-rules.md
-Phase 5 Self-consist → re-run LLM with auditor phrasing for HIGH tier
+Phase 5 Self-consist → re-run LLM with auditor phrasing for HIGH and MEDIUM (A1)
 Phase 6 Discord post → render + POST per tier"""
 from __future__ import annotations
 
-import json
+import dataclasses
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from .discord import DiscordPostError, format_alert, post_discord
 from .oracles import (
@@ -24,7 +24,9 @@ from .oracles import (
     score_keywords,
     verify_quotes,
 )
+from .oracles.keyword import KeywordScore
 from .oracles.llm import SECONDARY_MODEL
+from .oracles.substring import SubstringResult
 from .qc import QCLogger
 from .sources import (
     EdgarSource,
@@ -34,6 +36,7 @@ from .sources import (
     Source,
 )
 from .state import SeenStore
+from .text_utils import term_present
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +48,21 @@ class PipelineConfig:
     sources_config: dict
     state_db: Path
     processed_log: Path
-    daily_report: Path
+    daily_report_dir: Path
     dry_run: bool = False
     # User spec: "只抓當天的新聞". Implemented as 24-hour rolling window to avoid
     # the midnight-UTC edge case where a 23:55 UTC item drops at 00:05 UTC.
     max_age_hours: int = 24
+
+
+@dataclass
+class TierDecision:
+    """Pure-function output of decide_tier(). Testable independently of LLM/IO."""
+
+    tier: str  # CRITICAL / HIGH / MEDIUM / REVIEW / DROP
+    reasons: List[str] = field(default_factory=list)
+    primary_ticker: Optional[str] = None
+    summary_caveat: bool = False  # B6: True when LLM summary may be hallucinated
 
 
 def build_sources(sources_config: dict) -> List[Source]:
@@ -69,7 +82,7 @@ def run(config: PipelineConfig) -> dict:
     """Execute pipeline. Returns summary stats."""
     sources = build_sources(config.sources_config)
     store = SeenStore(config.state_db)
-    qc = QCLogger(config.processed_log, config.daily_report)
+    qc = QCLogger(config.processed_log, config.daily_report_dir)
 
     stats = {"collected": 0, "fresh": 0, "sent": 0, "review": 0, "dropped": 0}
 
@@ -87,7 +100,7 @@ def run(config: PipelineConfig) -> dict:
                 logger.info("collected %d from %s for %s", len(items), source.name, ticker)
         stats["collected"] = len(all_items)
 
-        # Phase 2: Dedup + freshness filter (24h rolling window per max_age_hours)
+        # Phase 2: Dedup + freshness filter
         cutoff = datetime.now(timezone.utc) - timedelta(hours=config.max_age_hours)
         fresh: List[NewsItem] = []
         for item in all_items:
@@ -104,35 +117,35 @@ def run(config: PipelineConfig) -> dict:
 
         # Phase 3-6 per item
         for item in fresh:
-            tier, reasons, verdict, primary_ticker = _process_item(
-                item=item,
-                config=config,
-            )
-            if tier in ("CRITICAL", "HIGH", "MEDIUM"):
-                _send(item, verdict, primary_ticker, tier, qc, config, stats)
-                store.mark_seen(item)
-            elif tier == "REVIEW":
+            decision, verdict = _process_item(item=item, config=config)
+
+            if decision.tier in ("CRITICAL", "HIGH", "MEDIUM"):
+                _send(item, verdict, decision, qc, config, stats)
+            elif decision.tier == "REVIEW":
                 qc.log(
                     item=item,
                     verdict="REVIEW",
-                    tier=tier,
-                    reasons=reasons,
+                    tier=decision.tier,
+                    reasons=decision.reasons,
                     details=_verdict_details(verdict),
                 )
                 stats["review"] += 1
-                store.mark_seen(item)
-            else:
+            else:  # DROP
                 qc.log(
                     item=item,
                     verdict="DROP",
-                    reasons=reasons,
+                    reasons=decision.reasons,
                     details=_verdict_details(verdict),
                 )
                 stats["dropped"] += 1
+
+            # B1: dry_run never marks seen, so re-runs are reproducible
+            if not config.dry_run:
                 store.mark_seen(item)
 
-        # Daily housekeeping
-        store.gc_old_days(keep_days=2)
+        # Daily housekeeping (only on real runs)
+        if not config.dry_run:
+            store.gc_old_days(keep_days=2)
         qc.flush_daily_report()
     finally:
         qc.close()
@@ -142,44 +155,35 @@ def run(config: PipelineConfig) -> dict:
     return stats
 
 
-def _process_item(*, item: NewsItem, config: PipelineConfig):
-    """Run phases 3-5 for one item. Returns (tier, reasons, verdict, primary_ticker)."""
+def _process_item(*, item: NewsItem, config: PipelineConfig) -> Tuple[TierDecision, Optional[LLMVerdict]]:
+    """Run phases 3-5 for one item. Returns (TierDecision, primary verdict for QC details)."""
     target_tickers = _candidate_tickers(item, config)
     if not target_tickers:
-        return "DROP", ["no_candidate_ticker"], None, None
+        return TierDecision(tier="DROP", reasons=["no_candidate_ticker"]), None
 
-    # Phase 4 path A: keyword scoring (deterministic, fast)
-    keyword_results = {
-        t: score_keywords(item.raw_text, t, config.keywords[t])
-        for t in target_tickers
-    }
-    any_collision = [
-        t for t, r in keyword_results.items() if r.disambiguation_collisions
-    ]
-    if any_collision:
-        return (
-            "DROP",
-            [f"ticker_collision:{','.join(any_collision)}"],
-            None,
-            None,
-        )
-    any_exclude = any(r.exclude_hits for r in keyword_results.values())
-    if any_exclude:
-        return (
-            "DROP",
-            [
-                "exclude_strict_hit:"
-                + ",".join({h for r in keyword_results.values() for h in r.exclude_hits})
-            ],
-            None,
-            None,
-        )
-
-    # CRITICAL fast-path for SEC EDGAR — bypass LLM relevance, only need substring sanity
+    # B7: EDGAR fast-path runs BEFORE keyword computation. EDGAR is CIK-bound so
+    # collision/exclude_strict cannot apply — saves a wasted scoring pass.
     if item.source == "edgar":
         return _critical_path(item, target_tickers, config)
 
-    # Phase 4 path B: LLM classifier
+    # Path A: keyword scoring (deterministic)
+    keyword_results = {
+        t: score_keywords(item.raw_text, t, config.keywords[t]) for t in target_tickers
+    }
+    collisions = [t for t, r in keyword_results.items() if r.disambiguation_collisions]
+    if collisions:
+        return (
+            TierDecision(tier="DROP", reasons=[f"ticker_collision:{','.join(collisions)}"]),
+            None,
+        )
+    exclude_hits = {h for r in keyword_results.values() for h in r.exclude_hits}
+    if exclude_hits:
+        return (
+            TierDecision(tier="DROP", reasons=[f"exclude_strict_hit:{','.join(sorted(exclude_hits))}"]),
+            None,
+        )
+
+    # Path B: LLM classifier (Opus)
     try:
         primary_verdict = classify_with_llm(
             tickers=target_tickers,
@@ -192,83 +196,153 @@ def _process_item(*, item: NewsItem, config: PipelineConfig):
         )
     except LLMOracleError as e:
         logger.warning("LLM classify failed for %s: %s", item.url, e)
-        return "REVIEW", [f"llm_error:{e}"], None, None
+        return TierDecision(tier="REVIEW", reasons=[f"llm_error:{e}"]), None
 
-    # Phase 3: substring oracle
-    sub = verify_quotes(primary_verdict, item.raw_text)
-    if not sub.ok:
-        return (
-            "DROP",
-            ["quote_not_in_source"],
-            primary_verdict,
-            None,
-        )
+    # Substring oracle
+    substring_result = verify_quotes(primary_verdict, item.raw_text)
 
-    # Tier determination per alert-rules.md
-    relevant_tickers = [
-        t
-        for t, rel in primary_verdict.ticker_relevance.items()
+    # Tier decision (pure function — testable in isolation, see test_pipeline_tier_decision.py)
+    decision = decide_tier(
+        source_confidence=item.source_confidence,
+        primary_verdict=primary_verdict,
+        keyword_results=keyword_results,
+        substring_result=substring_result,
+    )
+
+    # Phase 5: Self-consistency on HIGH and MEDIUM (A1: google_news is most LLM-sensitive)
+    if decision.tier in ("HIGH", "MEDIUM"):
+        decision = _apply_self_consistency(item, target_tickers, primary_verdict, decision)
+
+    return decision, primary_verdict
+
+
+def decide_tier(
+    *,
+    source_confidence: str,
+    primary_verdict: LLMVerdict,
+    keyword_results: Dict[str, KeywordScore],
+    substring_result: SubstringResult,
+) -> TierDecision:
+    """Pure function: oracle outputs → tier verdict per alert-rules.md.
+
+    Inputs:
+        source_confidence: 'high' | 'medium' | 'critical'
+        primary_verdict:   LLM oracle output
+        keyword_results:   per-ticker KeywordScore from path A
+        substring_result:  mention_quotes verbatim verification
+
+    Returns TierDecision. EDGAR critical path is handled separately in _critical_path().
+    """
+    relevant = [
+        t for t, rel in primary_verdict.ticker_relevance.items()
         if rel.is_relevant and rel.relevance_type != "buzzword-list-only"
     ]
-    if not relevant_tickers:
-        return "DROP", ["llm_no_relevant_or_buzzword_only"], primary_verdict, None
+    if not relevant:
+        return TierDecision(tier="DROP", reasons=["llm_no_relevant_or_buzzword_only"])
 
     if not primary_verdict.should_alert:
-        return "DROP", ["llm_should_not_alert"], primary_verdict, None
+        return TierDecision(
+            tier="DROP",
+            reasons=["llm_should_not_alert"],
+            primary_ticker=relevant[0],
+        )
 
-    primary_ticker = relevant_tickers[0]
+    primary_ticker = relevant[0]
 
-    # Differential: keyword path agreement
-    kw_pass_for_relevant = any(keyword_results[t].passed for t in relevant_tickers)
-
-    if item.source_confidence == "high":
-        if kw_pass_for_relevant:
-            tier = "HIGH"
-        else:
-            return (
-                "REVIEW",
-                ["differential_disagreement_kw_no_llm_yes"],
-                primary_verdict,
-                primary_ticker,
+    # B5: substring partial failure (some quotes verbatim, some hallucinated) → REVIEW
+    if not substring_result.ok:
+        if substring_result.all_failed_for(primary_ticker):
+            return TierDecision(
+                tier="DROP",
+                reasons=["quote_not_in_source"],
+                primary_ticker=primary_ticker,
             )
-    elif item.source_confidence == "medium":
-        if kw_pass_for_relevant:
-            tier = "MEDIUM"
-        else:
-            return (
-                "REVIEW",
-                ["medium_source_no_keyword_match"],
-                primary_verdict,
-                primary_ticker,
-            )
-    else:
-        return "DROP", ["unknown_source_confidence"], primary_verdict, primary_ticker
+        return TierDecision(
+            tier="REVIEW",
+            reasons=["partial_quote_failure"],
+            primary_ticker=primary_ticker,
+        )
 
-    # Phase 5: self-consistency for HIGH tier
-    if tier == "HIGH":
-        try:
-            auditor_verdict = classify_with_llm(
-                tickers=target_tickers,
-                url=item.url,
-                title=item.title,
-                raw_text=item.raw_text,
-                published=item.published_at.isoformat(),
-                source=item.source,
-                publisher=item.publisher,
-                use_auditor_phrasing=True,
-            )
-            cons = check_consistency(primary_verdict, auditor_verdict)
-            if not cons.consistent:
-                logger.info("self-consistency mismatch for %s — downgrading", item.url)
-                tier = "MEDIUM"
-        except LLMOracleError as e:
-            logger.warning("auditor classify failed: %s — keeping HIGH", e)
+    # Differential: keyword path A vs LLM path B
+    kw_pass = any(keyword_results[t].passed for t in relevant if t in keyword_results)
 
-    return tier, [], primary_verdict, primary_ticker
+    if source_confidence == "high":
+        if kw_pass:
+            return TierDecision(tier="HIGH", reasons=[], primary_ticker=primary_ticker)
+        return TierDecision(
+            tier="REVIEW",
+            reasons=["differential_disagreement_kw_no_llm_yes"],
+            primary_ticker=primary_ticker,
+        )
+    if source_confidence == "medium":
+        if kw_pass:
+            return TierDecision(tier="MEDIUM", reasons=[], primary_ticker=primary_ticker)
+        return TierDecision(
+            tier="REVIEW",
+            reasons=["medium_source_no_keyword_match"],
+            primary_ticker=primary_ticker,
+        )
+    return TierDecision(
+        tier="DROP",
+        reasons=[f"unknown_source_confidence:{source_confidence}"],
+        primary_ticker=primary_ticker,
+    )
 
 
-def _critical_path(item: NewsItem, tickers: list[str], config: PipelineConfig):
-    """SEC EDGAR fast-path. Substring check ticker presence; LLM (Sonnet) only for translation."""
+def _apply_self_consistency(
+    item: NewsItem,
+    target_tickers: List[str],
+    primary_verdict: LLMVerdict,
+    decision: TierDecision,
+) -> TierDecision:
+    """Run auditor pass (Sonnet) and downgrade tier on disagreement.
+
+    B2 fix: auditor LLM error is a signal, not noise — downgrade to REVIEW.
+    A1 change: applies to MEDIUM as well as HIGH (google_news is more LLM-sensitive
+    than ticker-feed sources)."""
+    try:
+        auditor_verdict = classify_with_llm(
+            tickers=target_tickers,
+            url=item.url,
+            title=item.title,
+            raw_text=item.raw_text,
+            published=item.published_at.isoformat(),
+            source=item.source,
+            publisher=item.publisher,
+            use_auditor_phrasing=True,
+        )
+    except LLMOracleError as e:
+        logger.warning("auditor classify failed: %s — downgrade to REVIEW", e)
+        return dataclasses.replace(
+            decision,
+            tier="REVIEW",
+            reasons=decision.reasons + [f"self_consistency_inconclusive:{e}"],
+        )
+
+    cons = check_consistency(primary_verdict, auditor_verdict)
+    if cons.consistent:
+        return decision
+
+    logger.info("self-consistency mismatch on %s — downgrading", item.url)
+    if decision.tier == "HIGH":
+        return dataclasses.replace(
+            decision, tier="MEDIUM", reasons=decision.reasons + ["self_consistency_mismatch"]
+        )
+    # MEDIUM with inconsistency → REVIEW (keep human in the loop)
+    return dataclasses.replace(
+        decision, tier="REVIEW", reasons=decision.reasons + ["self_consistency_mismatch"]
+    )
+
+
+def _critical_path(
+    item: NewsItem, tickers: List[str], config: PipelineConfig
+) -> Tuple[TierDecision, Optional[LLMVerdict]]:
+    """SEC EDGAR fast-path. Substring check informs summary trust; LLM (Sonnet) translates only.
+
+    Trust hierarchy: 8-K is the company's own legal filing — we always alert.
+    LLM is used solely to translate/summarize. If substring oracle catches the LLM
+    fabricating quotes (B6), we set summary_caveat=True so Discord shows a warning
+    rather than potentially misleading prose."""
     primary_ticker = tickers[0]
     try:
         verdict = classify_with_llm(
@@ -282,16 +356,25 @@ def _critical_path(item: NewsItem, tickers: list[str], config: PipelineConfig):
             model=SECONDARY_MODEL,
         )
         sub = verify_quotes(verdict, item.raw_text)
-        if not sub.ok:
-            # 8-K critical events still alert even if LLM mis-quotes — we don't trust LLM
-            # for the alert decision here. But note in QC.
-            logger.warning("CRITICAL path: substring failed but proceeding: %s", sub.failed_quotes)
-        return "CRITICAL", [], verdict, primary_ticker
+        caveat = not sub.ok
+        if caveat:
+            logger.warning(
+                "CRITICAL path: substring failed (%s) — alert with summary_caveat",
+                sub.failed_quotes,
+            )
+        return (
+            TierDecision(
+                tier="CRITICAL",
+                reasons=["substring_failed_but_critical"] if caveat else [],
+                primary_ticker=primary_ticker,
+                summary_caveat=caveat,
+            ),
+            verdict,
+        )
     except LLMOracleError as e:
         logger.warning("CRITICAL path LLM failed for %s — sending raw alert: %s", item.url, e)
-        # Synthesize a minimal verdict so Discord can render
-        from .oracles.schema import LLMVerdict, TickerRelevance
-        synthetic = LLMVerdict(
+        from .oracles.schema import LLMVerdict as _Verdict, TickerRelevance
+        synthetic = _Verdict(
             ticker_relevance={
                 primary_ticker: TickerRelevance(
                     is_relevant=True,
@@ -306,21 +389,36 @@ def _critical_path(item: NewsItem, tickers: list[str], config: PipelineConfig):
             category="regulatory",
             should_alert=True,
             alert_tier="high",
-            chinese_summary=f"[LLM 失敗] {item.title}",
+            chinese_summary=item.title,
         )
-        return "CRITICAL", ["llm_failed_but_critical"], synthetic, primary_ticker
+        return (
+            TierDecision(
+                tier="CRITICAL",
+                reasons=["llm_failed_but_critical"],
+                primary_ticker=primary_ticker,
+                summary_caveat=True,
+            ),
+            synthetic,
+        )
 
 
-def _candidate_tickers(item: NewsItem, config: PipelineConfig) -> list[str]:
-    """Determine which configured tickers might be discussed in this item."""
+def _candidate_tickers(item: NewsItem, config: PipelineConfig) -> List[str]:
+    """Determine which configured tickers might be discussed in this item.
+
+    B3: uses term_present (word-boundary aware) to avoid 'TEM' matching 'system' or
+    'Templeton'. Without this gate, every news article containing 'system' would
+    burn LLM quota. Disambiguation still happens downstream via keyword oracle."""
     if item.ticker_hint and item.ticker_hint in config.tickers:
         return [item.ticker_hint]
-    candidates = []
+    candidates: List[str] = []
     for ticker, meta in config.tickers.items():
-        for alias in [ticker] + list(meta.get("ticker_aliases", [])) + list(meta.get("company_aliases", [])):
-            if alias.lower() in item.raw_text.lower():
-                candidates.append(ticker)
-                break
+        aliases = (
+            [ticker]
+            + list(meta.get("ticker_aliases", []))
+            + list(meta.get("company_aliases", []))
+        )
+        if any(term_present(alias, item.raw_text) for alias in aliases):
+            candidates.append(ticker)
     return candidates
 
 
@@ -345,22 +443,29 @@ def _verdict_details(verdict: Optional[LLMVerdict]) -> dict:
 
 def _send(
     item: NewsItem,
-    verdict: LLMVerdict,
-    primary_ticker: str,
-    tier: str,
+    verdict: Optional[LLMVerdict],
+    decision: TierDecision,
     qc: QCLogger,
     config: PipelineConfig,
     stats: dict,
 ) -> None:
+    if verdict is None or decision.primary_ticker is None:
+        logger.error("_send called without verdict/primary_ticker; tier=%s", decision.tier)
+        return
     content = format_alert(
-        tier=tier, item=item, verdict=verdict, primary_ticker=primary_ticker
+        tier=decision.tier,
+        item=item,
+        verdict=verdict,
+        primary_ticker=decision.primary_ticker,
+        summary_caveat=decision.summary_caveat,
     )
     if config.dry_run:
         logger.info("[DRY RUN] would post:\n%s\n", content)
         qc.log(
             item=item,
             verdict="DRY_RUN_SENT",
-            tier=tier,
+            tier=decision.tier,
+            reasons=decision.reasons,
             details=_verdict_details(verdict),
         )
         stats["sent"] += 1
@@ -368,14 +473,20 @@ def _send(
 
     try:
         post_discord(content)
-        qc.log(item=item, verdict="SENT", tier=tier, details=_verdict_details(verdict))
+        qc.log(
+            item=item,
+            verdict="SENT",
+            tier=decision.tier,
+            reasons=decision.reasons,
+            details=_verdict_details(verdict),
+        )
         stats["sent"] += 1
     except DiscordPostError as e:
         logger.error("discord post failed: %s", e)
         qc.log(
             item=item,
             verdict="DISCORD_FAIL",
-            tier=tier,
-            reasons=[str(e)],
+            tier=decision.tier,
+            reasons=decision.reasons + [str(e)],
             details=_verdict_details(verdict),
         )

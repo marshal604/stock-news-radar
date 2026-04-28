@@ -72,3 +72,28 @@ def test_empty_mention_quotes():
     v = _make_verdict("UUUU", [])
     res = verify_quotes(v, src)
     assert res.ok is True
+    assert res.total_quotes["UUUU"] == 0
+    assert res.all_failed_for("UUUU") is False  # zero quotes != all failed
+
+
+def test_total_quotes_tracking():
+    src = "Energy Fuels reported earnings."
+    v = _make_verdict("UUUU", ["Energy Fuels reported earnings.", "fake quote"])
+    res = verify_quotes(v, src)
+    assert res.total_quotes["UUUU"] == 2
+    assert len(res.failed_quotes["UUUU"]) == 1
+
+
+def test_all_failed_for_distinguishes_partial_from_total():
+    src = "Energy Fuels reported earnings."
+    # 1/2 valid → partial failure (REVIEW path in pipeline)
+    v_partial = _make_verdict("UUUU", ["Energy Fuels reported earnings.", "hallucinated"])
+    res_partial = verify_quotes(v_partial, src)
+    assert res_partial.ok is False
+    assert res_partial.all_failed_for("UUUU") is False
+
+    # 0/2 valid → total failure (DROP path)
+    v_total = _make_verdict("UUUU", ["fake1", "fake2"])
+    res_total = verify_quotes(v_total, src)
+    assert res_total.ok is False
+    assert res_total.all_failed_for("UUUU") is True

@@ -57,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
         sources_config=sources_config,
         state_db=REPO_ROOT / "data" / "seen.sqlite",
         processed_log=REPO_ROOT / "data" / "processed-log.ndjson",
-        daily_report=REPO_ROOT / "qc" / "daily-report.json",
+        daily_report_dir=REPO_ROOT / "qc",
         dry_run=args.dry_run,
     )
 

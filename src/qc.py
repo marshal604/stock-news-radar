@@ -1,7 +1,8 @@
 """QC signal logger. Two artifacts:
 
 1. processed-log.ndjson — every item we touched + verdict + decision (append-only)
-2. daily-report.json — aggregated counts per QC signal, refreshed each run
+2. daily-report-YYYY-MM-DD.json — per-day cumulative counters (B4 fix). Each run
+   merges into the day's report rather than overwriting; runs counter increments.
 
 Per harness rule 'Fail Loud': we never silently drop. Every drop has a reason."""
 from __future__ import annotations
@@ -19,11 +20,11 @@ logger = logging.getLogger(__name__)
 
 
 class QCLogger:
-    def __init__(self, processed_log: Path, daily_report: Path):
+    def __init__(self, processed_log: Path, daily_report_dir: Path):
         processed_log.parent.mkdir(parents=True, exist_ok=True)
-        daily_report.parent.mkdir(parents=True, exist_ok=True)
+        daily_report_dir.mkdir(parents=True, exist_ok=True)
         self.processed_log_path = processed_log
-        self.daily_report_path = daily_report
+        self.daily_report_dir = daily_report_dir
         self._counters: Counter[str] = Counter()
         self._fp = open(processed_log, "a", encoding="utf-8")
 
@@ -31,7 +32,7 @@ class QCLogger:
         self,
         *,
         item: NewsItem,
-        verdict: str,  # SENT / DROP / REVIEW
+        verdict: str,  # SENT / DROP / REVIEW / DRY_RUN_SENT / DISCORD_FAIL
         tier: Optional[str] = None,
         reasons: Optional[list[str]] = None,
         details: Optional[Dict[str, Any]] = None,
@@ -58,12 +59,28 @@ class QCLogger:
             self._counters[f"reason:{reason}"] += 1
 
     def flush_daily_report(self) -> None:
+        """Merge this run's counters into the day's report file. Runs accumulate."""
+        today = datetime.now(timezone.utc).date().isoformat()
+        path = self.daily_report_dir / f"daily-report-{today}.json"
+
+        existing: Dict[str, Any] = {}
+        if path.exists():
+            try:
+                with open(path, encoding="utf-8") as f:
+                    existing = json.load(f)
+            except (json.JSONDecodeError, OSError) as e:
+                logger.warning("could not read existing daily report %s: %s", path, e)
+
+        cumulative = Counter(existing.get("counters", {}))
+        cumulative.update(self._counters)
+
         report = {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-            "counters": dict(self._counters),
+            "date": today,
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "runs_today": existing.get("runs_today", 0) + 1,
+            "counters": dict(cumulative),
         }
-        # Merge with any previous report from same day (within run cumulative — file is overwritten each run)
-        with open(self.daily_report_path, "w", encoding="utf-8") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(report, f, ensure_ascii=False, indent=2)
 
     def close(self) -> None:

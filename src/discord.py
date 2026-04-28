@@ -1,12 +1,11 @@
 """Discord webhook poster. Adapted from tradingview-snr/bot/notifications.py.
 
-Fail-loud variant: errors are logged AND raised. Caller decides retry/drop.
-(In tradingview-snr the trade bot must keep running; here we'd rather know
-which alerts didn't make it through.)"""
+Fail-loud variant: errors are logged AND raised. Caller decides retry/drop."""
 from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import Optional
 
 import httpx
@@ -18,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 _TIMEOUT_SEC = 10.0
 _SAFE_CONTENT_LIMIT = 1900
+_RETRY_BACKOFF_SEC = (2, 4, 8)  # exponential backoff for transient failures
 
 _TIER_EMOJI = {
     "CRITICAL": "🚨",
@@ -50,27 +50,43 @@ def get_webhook_url() -> Optional[str]:
 
 
 def post_discord(content: str, *, webhook_url: Optional[str] = None) -> bool:
-    """POST plain content. Returns True on 2xx, raises DiscordPostError on failure.
+    """POST plain content with exponential backoff on transient failures.
 
-    Returns False (no-op) when webhook is not configured — useful for dry-run."""
+    Returns True on 2xx; raises DiscordPostError after all retries exhausted.
+    Returns False (no-op) when webhook is not configured — useful for dry-run.
+
+    Retries: 2s → 4s → 8s on 429 / 5xx / network error. Permanent 4xx (excl 429)
+    fails immediately."""
     url = webhook_url if webhook_url is not None else get_webhook_url()
     if not url:
         logger.info("DISCORD_WEBHOOK_URL not set — skipping post")
         return False
 
     payload = {"content": content[:_SAFE_CONTENT_LIMIT]}
-    try:
-        with httpx.Client(timeout=_TIMEOUT_SEC) as client:
-            resp = client.post(url, json=payload)
-    except Exception as e:
-        raise DiscordPostError(f"discord webhook network error: {e}") from e
+    last_err: Optional[str] = None
 
-    if 200 <= resp.status_code < 300:
-        return True
+    for attempt, backoff in enumerate([0] + list(_RETRY_BACKOFF_SEC)):
+        if backoff:
+            logger.warning("discord retry %d after %ds (last error: %s)", attempt, backoff, last_err)
+            time.sleep(backoff)
+        try:
+            with httpx.Client(timeout=_TIMEOUT_SEC) as client:
+                resp = client.post(url, json=payload)
+        except Exception as e:
+            last_err = f"network: {e}"
+            continue
 
-    raise DiscordPostError(
-        f"discord webhook non-2xx status={resp.status_code} body={resp.text[:200]!r}"
-    )
+        if 200 <= resp.status_code < 300:
+            return True
+        if resp.status_code == 429 or 500 <= resp.status_code < 600:
+            last_err = f"status={resp.status_code} body={resp.text[:200]!r}"
+            continue
+        # permanent client error: do not retry
+        raise DiscordPostError(
+            f"discord webhook non-2xx status={resp.status_code} body={resp.text[:200]!r}"
+        )
+
+    raise DiscordPostError(f"discord webhook failed after retries: {last_err}")
 
 
 def format_alert(
@@ -79,17 +95,29 @@ def format_alert(
     item: NewsItem,
     verdict: LLMVerdict,
     primary_ticker: str,
+    summary_caveat: bool = False,
 ) -> str:
-    """Render a Discord message for a single alert."""
+    """Render a Discord message for a single alert.
+
+    If `summary_caveat` is True, the LLM-supplied chinese_summary failed verbatim
+    substring verification (B6). The caveat-marked output uses the raw title and
+    flags the summary for human review instead of trusting potentially hallucinated
+    LLM prose."""
     tier_emoji = _TIER_EMOJI.get(tier, "🟢")
     sentiment_label = _SENTIMENT_LABEL.get(verdict.sentiment, verdict.sentiment)
     sentiment_emoji = _SENTIMENT_EMOJI.get(verdict.sentiment, "")
     published_str = item.published_at.strftime("%Y-%m-%d %H:%M UTC")
 
+    summary_line = (
+        f"⚠️ [摘要待確認 — LLM 引用幻覺，請查原文] {item.title}"
+        if summary_caveat
+        else f"📝 {verdict.chinese_summary}"
+    )
+
     lines = [
         f"{tier_emoji} **[{tier}] ${primary_ticker}** · {sentiment_emoji} {sentiment_label} · `{verdict.category}`",
         f"**{item.title}**",
-        f"📝 {verdict.chinese_summary}",
+        summary_line,
         f"📰 {item.publisher or item.source} · {published_str}",
         f"🔗 {item.url}",
     ]
