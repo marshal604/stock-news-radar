@@ -1,21 +1,21 @@
 {
   "date": "2026-04-28",
-  "last_updated": "2026-04-28T14:26:22.283754+00:00",
-  "runs_today": 10,
+  "last_updated": "2026-04-28T14:32:10.594728+00:00",
+  "runs_today": 11,
   "counters": {
-    "verdict:DROP": 15966,
-    "reason:date_too_old": 15944,
+    "verdict:DROP": 17561,
+    "reason:date_too_old": 17537,
     "verdict:REVIEW": 4,
     "tier:REVIEW": 4,
     "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr=''": 4,
     "reason:already_sent": 11,
-    "reason:llm_should_not_alert": 6,
+    "reason:llm_should_not_alert": 7,
     "reason:llm_no_relevant_or_buzzword_only": 2,
-    "llm_call:primary": 7,
-    "reason:schema_gap_suspicious_veto": 4,
-    "reason:exclude_strict_hit:Top 10": 3,
-    "llm_call:auditor": 2,
-    "verdict:SENT": 2,
-    "tier:MEDIUM": 2
+    "llm_call:primary": 9,
+    "reason:schema_gap_suspicious_veto": 5,
+    "reason:exclude_strict_hit:Top 10": 4,
+    "llm_call:auditor": 3,
+    "verdict:SENT": 3,
+    "tier:MEDIUM": 3
   }
 }
