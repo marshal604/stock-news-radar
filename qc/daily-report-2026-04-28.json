@@ -1,17 +1,18 @@
 {
   "date": "2026-04-28",
-  "last_updated": "2026-04-28T10:52:08.932931+00:00",
-  "runs_today": 5,
+  "last_updated": "2026-04-28T12:48:51.114584+00:00",
+  "runs_today": 6,
   "counters": {
-    "verdict:DROP": 7985,
-    "reason:date_too_old": 7973,
+    "verdict:DROP": 9583,
+    "reason:date_too_old": 9569,
     "verdict:REVIEW": 4,
     "tier:REVIEW": 4,
     "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr=''": 4,
-    "reason:already_sent": 6,
+    "reason:already_sent": 7,
     "reason:llm_should_not_alert": 4,
     "reason:llm_no_relevant_or_buzzword_only": 2,
     "llm_call:primary": 3,
-    "reason:schema_gap_suspicious_veto": 2
+    "reason:schema_gap_suspicious_veto": 2,
+    "reason:exclude_strict_hit:Top 10": 1
   }
 }
