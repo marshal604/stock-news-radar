@@ -54,7 +54,7 @@ collaboration with the Department of Energy is progressing on schedule.</p>
 
 def test_extracts_main_content_from_html(monkeypatch):
     _patch_get(monkeypatch, 200, _REAL_ARTICLE_HTML)
-    body = fetch_article_body("https://example.com/article")
+    body, _status = fetch_article_body("https://example.com/article")
     assert body is not None
     # Main content present
     assert "Energy Fuels Inc" in body
@@ -66,25 +66,25 @@ def test_extracts_main_content_from_html(monkeypatch):
 
 def test_404_returns_none(monkeypatch):
     _patch_get(monkeypatch, 404)
-    assert fetch_article_body("https://example.com/missing") is None
+    assert fetch_article_body("https://example.com/missing") == (None, "title_only")
 
 
 def test_short_paywall_stub_returns_none(monkeypatch):
     """Subscribe-to-read interstitials are usually < 200 chars of meaningful text."""
     paywall = "<html><body><h1>Subscribe to read</h1><p>Sign up for $5/month</p></body></html>"
     _patch_get(monkeypatch, 200, paywall)
-    assert fetch_article_body("https://example.com/paywalled") is None
+    assert fetch_article_body("https://example.com/paywalled") == (None, "title_only")
 
 
 def test_empty_response_returns_none(monkeypatch):
     _patch_get(monkeypatch, 200, "")
-    assert fetch_article_body("https://example.com/empty") is None
+    assert fetch_article_body("https://example.com/empty") == (None, "title_only")
 
 
 def test_invalid_url_returns_none():
-    assert fetch_article_body("") is None
-    assert fetch_article_body("not-a-url") is None
-    assert fetch_article_body("ftp://example.com/x") is None
+    assert fetch_article_body("") == (None, "title_only")
+    assert fetch_article_body("not-a-url") == (None, "title_only")
+    assert fetch_article_body("ftp://example.com/x") == (None, "title_only")
 
 
 def test_network_error_returns_none(monkeypatch):
@@ -95,7 +95,7 @@ def test_network_error_returns_none(monkeypatch):
     mock_client.get.side_effect = TimeoutError("simulated")
 
     monkeypatch.setattr(fetcher.httpx, "Client", MagicMock(return_value=mock_client))
-    assert fetch_article_body("https://example.com/slow") is None
+    assert fetch_article_body("https://example.com/slow") == (None, "title_only")
 
 
 def test_lru_cache_dedupes_same_url(monkeypatch):

@@ -9,6 +9,17 @@ from typing import List, Literal, Optional
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 SourceConfidence = Literal["critical", "high", "medium"]
+# Explicit signal for how much LLM context we have on this item. Default at
+# construction is 'summary_only' (title + RSS summary, no body fetch attempted).
+# Pipeline upgrades to 'partial' / 'complete' or downgrades to 'title_only' after
+# article body fetch attempt. Decide_tier consults this for tier cap; format_alert
+# annotates the Discord message so user knows what to expect.
+BodyFetchStatus = Literal[
+    "complete",      # ≥ 500 chars of real article body, quality gates passed
+    "partial",       # 200-500 chars or meta-tag-only fallback (og:description)
+    "summary_only",  # default — title + RSS summary, no body fetch attempted
+    "title_only",    # body fetch tried, all strategies failed (paywall/JS/redirect-loss)
+]
 
 
 @dataclass(frozen=True)
@@ -21,6 +32,7 @@ class NewsItem:
     source_confidence: SourceConfidence
     ticker_hint: Optional[str] = None
     publisher: Optional[str] = None
+    body_fetch_status: BodyFetchStatus = "summary_only"
 
     def __post_init__(self) -> None:
         # N8: published_at must be timezone-aware. Naive datetimes silently break

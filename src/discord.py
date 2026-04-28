@@ -111,20 +111,27 @@ def format_alert(
 ) -> str:
     """Render a Discord message for a single alert.
 
-    If `summary_caveat` is True, the LLM-supplied chinese_summary failed verbatim
-    substring verification (B6). The caveat-marked output uses the raw title and
-    flags the summary for human review instead of trusting potentially hallucinated
-    LLM prose."""
+    Three layers of provenance signaling for the user:
+      1. `summary_caveat=True` (B6): LLM hallucinated quotes — drop summary,
+         show '[摘要待確認 — 引用幻覺]'.
+      2. `item.body_fetch_status == 'title_only'` (T1): article body was
+         unfetchable (paywall/JS/redirect-loss) — prepend '⚠️ [僅依標題判斷]'
+         so user knows to click for real context.
+      3. `item.body_fetch_status == 'partial'` (T1): only got short body or
+         meta-tag fallback — prepend '📋 [依摘要 meta 描述]'."""
     tier_emoji = _TIER_EMOJI.get(tier, "🟢")
     sentiment_label = _SENTIMENT_LABEL.get(verdict.sentiment, verdict.sentiment)
     sentiment_emoji = _SENTIMENT_EMOJI.get(verdict.sentiment, "")
     published_str = item.published_at.strftime("%Y-%m-%d %H:%M UTC")
 
-    summary_line = (
-        f"⚠️ [摘要待確認 — LLM 引用幻覺，請查原文] {item.title}"
-        if summary_caveat
-        else f"📝 {verdict.chinese_summary}"
-    )
+    if summary_caveat:
+        summary_line = f"⚠️ [摘要待確認 — LLM 引用幻覺，請查原文] {item.title}"
+    elif item.body_fetch_status == "title_only":
+        summary_line = f"⚠️ [僅依標題判斷，無內文] 📝 {verdict.chinese_summary}"
+    elif item.body_fetch_status == "partial":
+        summary_line = f"📋 [依摘要 meta 描述] 📝 {verdict.chinese_summary}"
+    else:
+        summary_line = f"📝 {verdict.chinese_summary}"
 
     lines = [
         f"{tier_emoji} **[{tier}] ${primary_ticker}** · {sentiment_emoji} {sentiment_label} · `{verdict.category}`",

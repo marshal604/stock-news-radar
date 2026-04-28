@@ -48,6 +48,7 @@ class QCLogger:
             "source": item.source,
             "ticker_hint": item.ticker_hint,
             "published_at": item.published_at.isoformat(),
+            "body_fetch_status": item.body_fetch_status,
             "verdict": verdict,
             "tier": tier,
             "reasons": reasons or [],
@@ -57,6 +58,7 @@ class QCLogger:
         self._fp.flush()
 
         self._counters[f"verdict:{verdict}"] += 1
+        self._counters[f"body_fetch:{item.body_fetch_status}"] += 1
         if tier:
             self._counters[f"tier:{tier}"] += 1
         for reason in reasons or []:

@@ -52,21 +52,18 @@ def _config() -> PipelineConfig:
 
 
 def test_competitor_source_routes_to_review_without_llm(qc):
-    decision, verdict = _process_item(item=_competitor_item(), config=_config(), qc=qc)
+    decision, verdict, _item = _process_item(item=_competitor_item(), config=_config(), qc=qc)
     assert decision.tier == "REVIEW"
     assert decision.primary_ticker == "UUUU"
     assert "competitor_signal_data_collection" in decision.reasons
-    # No LLM call → no verdict
     assert verdict is None
-    # And no llm_call counter increment
     assert "llm_call:primary" not in qc._counters
 
 
 def test_competitor_gate_runs_before_candidate_match(qc):
     """Article doesn't even need to mention UUUU — gate fires on source name alone."""
     item = _competitor_item()
-    # Strip any UUUU mention from text just to be sure
     item = NewsItem(**{**item.__dict__, "raw_text": "Cameco news, no other tickers."})
-    decision, verdict = _process_item(item=item, config=_config(), qc=qc)
+    decision, verdict, _item = _process_item(item=item, config=_config(), qc=qc)
     assert decision.tier == "REVIEW"
     assert verdict is None

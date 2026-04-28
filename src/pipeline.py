@@ -179,7 +179,7 @@ def run(config: PipelineConfig) -> dict:
                 if resolved != item.url:
                     item = dataclasses.replace(item, url=resolved)
 
-            decision, verdict = _process_item(item=item, config=config, qc=qc)
+            decision, verdict, item = _process_item(item=item, config=config, qc=qc)
 
             handled = True  # default for DROP/REVIEW (decision recorded, no Discord side-effect)
             if decision.tier in ("CRITICAL", "HIGH", "MEDIUM"):
@@ -227,11 +227,14 @@ def run(config: PipelineConfig) -> dict:
 
 def _process_item(
     *, item: NewsItem, config: PipelineConfig, qc: QCLogger
-) -> Tuple[TierDecision, Optional[LLMVerdict]]:
-    """Run phases 3-5 for one item. qc is passed for LLM call instrumentation (C4)."""
+) -> Tuple[TierDecision, Optional[LLMVerdict], NewsItem]:
+    """Run phases 3-5 for one item. Returns (decision, verdict, updated_item).
+
+    `updated_item` propagates body_fetch_status (set during enrichment) back to
+    the caller so _send / format_alert / mark_seen all see the same item state."""
     target_tickers = _candidate_tickers(item, config)
     if not target_tickers:
-        return TierDecision(tier="DROP", reasons=["no_candidate_ticker"]), None
+        return TierDecision(tier="DROP", reasons=["no_candidate_ticker"]), None, item
 
     # T1 competitor data collection: short-circuit before any LLM work.
     if item.source == "competitor_finviz":
@@ -242,11 +245,13 @@ def _process_item(
                 primary_ticker=item.ticker_hint,
             ),
             None,
+            item,
         )
 
     # B7: EDGAR fast-path runs BEFORE keyword computation (CIK-bound, no collision possible)
     if item.source == "edgar":
-        return _critical_path(item, target_tickers, qc)
+        decision, verdict = _critical_path(item, target_tickers, qc)
+        return decision, verdict, item
 
     # Path A: keyword scoring (deterministic)
     keyword_results = {
@@ -257,19 +262,21 @@ def _process_item(
         return (
             TierDecision(tier="DROP", reasons=[f"ticker_collision:{','.join(collisions)}"]),
             None,
+            item,
         )
     exclude_hits = {h for r in keyword_results.values() for h in r.exclude_hits}
     if exclude_hits:
         return (
             TierDecision(tier="DROP", reasons=[f"exclude_strict_hit:{','.join(sorted(exclude_hits))}"]),
             None,
+            item,
         )
 
-    # M1: enrich raw_text with article body before LLM. Body fetch is best-effort;
-    # falls back to original raw_text on any failure (paywall, timeout, bot ban).
-    # Critical: enriched_text must be used by verify_quotes + numeric_guardrail too
-    # so LLM-quoted phrases from the body actually substring-match.
-    enriched_text = _enrich_with_body(item)
+    # M1: enrich raw_text with article body before LLM. Returns updated item
+    # with body_fetch_status set (complete/partial/title_only). Critical:
+    # enriched_text must be used by verify_quotes + numeric_guardrail too so
+    # LLM-quoted phrases from the body actually substring-match.
+    item, enriched_text = _enrich_with_body(item)
 
     # Path B: LLM classifier (Opus)
     qc.record_llm_call("primary")
@@ -285,7 +292,7 @@ def _process_item(
         )
     except LLMOracleError as e:
         logger.warning("LLM classify failed for %s: %s", item.url, e)
-        return TierDecision(tier="REVIEW", reasons=[f"llm_error:{e}"]), None
+        return TierDecision(tier="REVIEW", reasons=[f"llm_error:{e}"]), None, item
 
     substring_result = verify_quotes(primary_verdict, enriched_text)
 
@@ -303,6 +310,7 @@ def _process_item(
         primary_verdict=primary_verdict,
         keyword_results=keyword_results,
         substring_result=substring_result,
+        body_fetch_status=item.body_fetch_status,
     )
 
     # Inject summary_caveat + reason into the decision
@@ -317,7 +325,7 @@ def _process_item(
     if decision.tier in ("HIGH", "MEDIUM"):
         decision = _apply_self_consistency(item, target_tickers, primary_verdict, decision, qc)
 
-    return decision, primary_verdict
+    return decision, primary_verdict, item
 
 
 def decide_tier(
@@ -326,8 +334,14 @@ def decide_tier(
     primary_verdict: LLMVerdict,
     keyword_results: Dict[str, KeywordScore],
     substring_result: SubstringResult,
+    body_fetch_status: str = "summary_only",
 ) -> TierDecision:
-    """Pure function: oracle outputs → tier verdict per alert-rules.md."""
+    """Pure function: oracle outputs → tier verdict per alert-rules.md.
+
+    body_fetch_status caps the tier when LLM had insufficient context
+    (title_only). Title-only HIGH-source items demote to MEDIUM with reason
+    'body_fetch_title_only' — explicit signal to user via Discord annotation
+    that they should click through for full context."""
     relevant = [
         t for t, rel in primary_verdict.ticker_relevance.items()
         if rel.is_relevant and rel.relevance_type != "buzzword-list-only"
@@ -365,6 +379,14 @@ def decide_tier(
 
     if source_confidence == "high":
         if kw_pass:
+            # T1: title-only body cap — HIGH signals without article body
+            # demote to MEDIUM so the user knows to click for context.
+            if body_fetch_status == "title_only":
+                return TierDecision(
+                    tier="MEDIUM",
+                    reasons=["body_fetch_title_only"],
+                    primary_ticker=primary_ticker,
+                )
             return TierDecision(tier="HIGH", reasons=[], primary_ticker=primary_ticker)
         return TierDecision(
             tier="REVIEW",
@@ -490,20 +512,19 @@ def _alert_on_source_anomalies(qc: QCLogger, config: PipelineConfig) -> None:
         logger.error("could not post source anomaly alert: %s", e)
 
 
-def _enrich_with_body(item: NewsItem) -> str:
-    """Append fetched article body to raw_text. Falls back to original on failure.
+def _enrich_with_body(item: NewsItem) -> Tuple[NewsItem, str]:
+    """Fetch body + return (updated_item_with_status, enriched_text).
 
-    NewsItem stays immutable; this returns a new enriched string that the LLM,
-    substring oracle, and numeric guardrail all share. Without this, raw_text was
-    title-only (Finviz) or title+200-char-summary (Google News), which is not
-    enough signal for relevance_type / sentiment / chinese_summary judgments
-    (see commit log: M1 rationale).
-    """
-    body = fetch_article_body(item.url)
+    Always returns a NewsItem with a definitive body_fetch_status (complete /
+    partial / title_only) — never leaves it at the constructor 'summary_only'
+    default once we've run extraction. decide_tier and format_alert downstream
+    use status to apply tier caps and Discord annotations."""
+    body, status = fetch_article_body(item.url, title=item.title)
+    item = dataclasses.replace(item, body_fetch_status=status)
     if not body:
-        return item.raw_text
-    logger.info("enriched %s with %d-char body", item.url[:80], len(body))
-    return f"{item.raw_text}\n\n--- ARTICLE BODY ---\n{body}"
+        return item, item.raw_text
+    logger.info("enriched %s (%s) with %d-char body", item.url[:80], status, len(body))
+    return item, f"{item.raw_text}\n\n--- ARTICLE BODY ---\n{body}"
 
 
 def _detect_suspicious_should_alert_veto(verdict: LLMVerdict) -> bool:
