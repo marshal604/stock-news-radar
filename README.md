@@ -3,14 +3,17 @@
 UUUU + TEM 即時新聞 radar。每 4 小時輪詢多個來源（SEC EDGAR、Finviz、Google News），經 4 層 oracle 驗證後推送 Discord。
 
 **LLM 模型分配**：
-- 主分析（relevance / sentiment / tier 判定）→ **Claude Opus 4.7**
-- Auditor self-consistency + EDGAR 翻譯 → **Claude Sonnet 4.6**
 
-兩個不同 model 比兩個不同 prompt 更獨立 — differential testing 訊號更強。
+| 角色 | 預設 | 任務 |
+|------|------|------|
+| Primary classifier | **Claude Opus 4.7** | relevance / sentiment / should_alert 判斷 + chinese_summary + impact_assessment |
+| Auditor (self-consistency) | **Claude Sonnet 4.6** | cross-verify primary（differential signal — 必須跟 primary 不同 model） |
+| EDGAR translator | **Claude Haiku 4.5** | 8-K 標題翻譯（純翻譯，下游有 numeric_guardrail 安全網） |
 
 模型 ID 透過 env var override（換代不用改 code）：
 - `RADAR_PRIMARY_MODEL`（預設 `claude-opus-4-7`）
-- `RADAR_SECONDARY_MODEL`（預設 `claude-sonnet-4-6`）
+- `RADAR_AUDITOR_MODEL`（預設 `claude-sonnet-4-6`）
+- `RADAR_TRANSLATE_MODEL`（預設 `claude-haiku-4-5`）
 
 ## Architecture
 
