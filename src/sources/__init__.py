@@ -1,4 +1,5 @@
 from .base import NewsItem, Source, SourceConfidence
+from .competitor_finviz import CompetitorFinvizSource
 from .edgar import EdgarSource
 from .yahoo import YahooSource
 from .finviz import FinvizSource
@@ -8,6 +9,7 @@ __all__ = [
     "NewsItem",
     "Source",
     "SourceConfidence",
+    "CompetitorFinvizSource",
     "EdgarSource",
     "YahooSource",
     "FinvizSource",

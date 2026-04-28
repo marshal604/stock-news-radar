@@ -70,6 +70,23 @@ LLM 在 Magenta-key contract 同步輸出（critical path 不適用，固定 neu
 - `sentiment ∈ {bullish, bearish, neutral, mixed}` → emoji 顏色
 - `category ∈ {earnings, regulatory, M&A, analyst, rumor, macro, partnership}` → tag
 
+## T1 競爭對手訊號收集（2026-04-28 起，data-only）
+
+`source=competitor_finviz` 的 item 會被 pipeline early gate 強制走 REVIEW，**完全不打 LLM、完全不發 Discord**。reasons=`["competitor_signal_data_collection"]`。
+
+設計依據：harness 「production data > theoretical refinement」。直接抓 competitor 新聞會踩 LLM 推論幻覺；直接 dismiss 又是放棄收 evidence。T1 是中間路：先用 REVIEW 收一週 raw data，再 data-driven 決定要不要 crystallize 規則。
+
+收完一週分析方法：
+
+```bash
+jq 'select(.source=="competitor_finviz")' data/processed-log.ndjson | head -50
+jq -s 'group_by(.publisher) | map({pub: .[0].publisher, n: length})' data/processed-log.ndjson
+```
+
+決定路徑：
+- 大量 competitor 新聞但沒有可辨識 pattern → 廢掉（disable competitor_finviz）
+- 有 N 條反覆出現的 trigger pattern（如「Cameco wins X」「FDA awards to Y」）→ 進 T2：寫 `config/competitor-impact-rules.json`，LLM 改成「matched_rules」純 lookup，不准自行推論
+
 ## 反饋校準（v2 候選）
 
 Discord 訊息加 react 👍 / 👎 → bot 收 reaction → 寫進 `golden-set/positive/` 或 `negative/`。每週跑 scenario regression 看誤判率變化。

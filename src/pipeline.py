@@ -29,6 +29,7 @@ from .oracles.keyword import KeywordScore
 from .oracles.substring import SubstringResult
 from .qc import QCLogger
 from .sources import (
+    CompetitorFinvizSource,
     EdgarSource,
     FinvizSource,
     GoogleNewsSource,
@@ -70,8 +71,11 @@ def build_sources(sources_config: dict) -> List[Source]:
     active: List[Source] = []
     if sources_config.get("edgar", {}).get("enabled", True) is not False:
         active.append(EdgarSource())
+    finviz = FinvizSource()
     if sources_config.get("finviz", {}).get("enabled", True) is not False:
-        active.append(FinvizSource())
+        active.append(finviz)
+    if sources_config.get("competitor_finviz", {}).get("enabled", False) is True:
+        active.append(CompetitorFinvizSource(finviz=finviz))
     if sources_config.get("google_news", {}).get("enabled", True) is not False:
         queries = sources_config.get("google_news_queries", {})
         active.append(GoogleNewsSource(queries_by_ticker=queries))
@@ -157,6 +161,20 @@ def run(config: PipelineConfig) -> dict:
 
 def _process_item(*, item: NewsItem, config: PipelineConfig) -> Tuple[TierDecision, Optional[LLMVerdict]]:
     """Run phases 3-5 for one item. Returns (TierDecision, primary verdict for QC details)."""
+    # T1 competitor data collection: short-circuit before any LLM work.
+    # Items from competitor_finviz are tagged with target ticker as a SIGNAL
+    # CANDIDATE, not as content about the target. Forced to REVIEW so we
+    # accumulate ground-truth data without burning quota or polluting Discord.
+    if item.source == "competitor_finviz":
+        return (
+            TierDecision(
+                tier="REVIEW",
+                reasons=["competitor_signal_data_collection"],
+                primary_ticker=item.ticker_hint,
+            ),
+            None,
+        )
+
     target_tickers = _candidate_tickers(item, config)
     if not target_tickers:
         return TierDecision(tier="DROP", reasons=["no_candidate_ticker"]), None

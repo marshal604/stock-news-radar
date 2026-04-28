@@ -25,6 +25,14 @@
     "html_table_id": "news-table",
     "notes": "Aggregator; high editorial filter. Requires User-Agent header."
   },
+  "competitor_finviz": {
+    "type": "scrape",
+    "confidence": "medium",
+    "ticker_specific": true,
+    "enabled": true,
+    "feeds_into": "data collection only — pipeline forces verdict=REVIEW",
+    "notes": "T1 data collection (commit 2026-04-28). Iterates each ticker's competitor_tickers list (tickers.json) and pulls Finviz news for each competitor. Items get ticker_hint=target, source=competitor_finviz; pipeline routes to REVIEW without LLM. Run for ≥1 week, then analyze qc/daily-report and processed-log to decide whether to crystallize patterns into competitor-impact-rules.json (T2)."
+  },
   "google_news": {
     "type": "rss",
     "confidence": "medium",
