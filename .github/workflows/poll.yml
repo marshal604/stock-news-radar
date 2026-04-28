@@ -2,7 +2,11 @@ name: poll
 
 on:
   schedule:
-    - cron: "0 */4 * * *"
+    # Every 4 hours, offset to :17 minute to avoid GitHub Actions integer-hour
+    # peak load — cron runs at exact-hour minutes get skipped on personal repos.
+    # Effective times: UTC 00:17 / 04:17 / 08:17 / 12:17 / 16:17 / 20:17
+    # TW (UTC+8):       08:17 / 12:17 / 16:17 / 20:17 / 00:17 / 04:17
+    - cron: "17 */4 * * *"
   workflow_dispatch:
 
 permissions:
