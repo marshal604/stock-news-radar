@@ -1,14 +1,14 @@
 {
   "date": "2026-04-28",
-  "last_updated": "2026-04-28T15:54:37.213665+00:00",
-  "runs_today": 16,
+  "last_updated": "2026-04-28T17:57:55.834461+00:00",
+  "runs_today": 17,
   "counters": {
-    "verdict:DROP": 25537,
-    "reason:date_too_old": 25507,
+    "verdict:DROP": 27133,
+    "reason:date_too_old": 27102,
     "verdict:REVIEW": 6,
     "tier:REVIEW": 6,
     "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr=''": 4,
-    "reason:already_sent": 11,
+    "reason:already_sent": 12,
     "reason:llm_should_not_alert": 8,
     "reason:llm_no_relevant_or_buzzword_only": 2,
     "llm_call:primary": 14,
@@ -18,7 +18,7 @@
     "verdict:SENT": 5,
     "tier:MEDIUM": 5,
     "reason:self_consistency_mismatch": 1,
-    "body_fetch:summary_only": 6381,
+    "body_fetch:summary_only": 7977,
     "body_fetch:complete": 3,
     "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr='' stdout=\"You've hit your limit · resets 3:40pm (UTC)\\n\"": 1
   }
