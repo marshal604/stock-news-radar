@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # for the commit-daily-report step
 
 concurrency:
   group: poll
@@ -51,13 +51,31 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python -m src.main
 
+      - name: Commit daily report back to repo
+        if: success()
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # daily-report-*.json is .gitignored; force-add only the files this run produced.
+          # find handles the no-match case without erroring.
+          find qc -name 'daily-report-*.json' -exec git add -f {} + 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no daily-report changes to commit"
+            exit 0
+          fi
+          git commit -m "chore(qc): daily report $(date -u +%F) [skip ci]"
+          # Rebase on top of any concurrent main updates before pushing
+          git pull --rebase origin main
+          git push
+
       - name: Upload QC artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: qc-${{ github.run_id }}
           path: |
-            qc/daily-report.json
+            qc/daily-report-*.json
             data/processed-log.ndjson
           if-no-files-found: ignore
           retention-days: 7
