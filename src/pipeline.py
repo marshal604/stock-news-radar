@@ -38,6 +38,7 @@ from .sources import (
     NewsItem,
     Source,
 )
+from .sources.google_news import decode_google_news_url
 from .state import SeenStore
 from .text_utils import term_present
 
@@ -253,6 +254,17 @@ def _process_item(
             TierDecision(tier="DROP", reasons=[f"exclude_strict_hit:{','.join(sorted(exclude_hits))}"]),
             None,
         )
+
+    # Resolve Google News redirect to publisher URL. Done lazily here (after keyword
+    # gate) rather than at fetch time because gnewsdecoder is ~1-1.5s per URL —
+    # acceptable for ~5 items reaching this point but not for the 100+ articles
+    # surfaced per fetch. NewsItem.url is updated so fetch_article_body() and
+    # format_alert() both see the publisher URL. Cross-run dedup is unaffected
+    # because seen-store also matches on title_hash.
+    if item.source == "google_news" and "news.google.com" in item.url:
+        resolved = decode_google_news_url(item.url)
+        if resolved != item.url:
+            item = dataclasses.replace(item, url=resolved)
 
     # M1: enrich raw_text with article body before LLM. Body fetch is best-effort;
     # falls back to original raw_text on any failure (paywall, timeout, bot ban).
