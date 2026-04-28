@@ -44,3 +44,28 @@ def test_subset_check_is_per_digit_not_per_number():
     every '2 → 200' hallucination) in exchange for zero false positives on genuine
     re-orderings ('Q1 2026' ↔ '2026 Q1')."""
     assert numeric_guardrail_pass("$20 dividend", "$200 dividend") is True
+
+
+def test_english_month_names_expand_to_digits():
+    """'May 1' → '5月1日' faithfully translates but introduces digit 5 not in
+    source as a literal '5'. Guardrail should expand month names to digits."""
+    assert numeric_guardrail_pass(
+        "Effective May 1, 2026", "5 月 1 日生效，2026 年"
+    ) is True
+
+
+def test_number_words_expand_to_digits():
+    """'five oncology programs' → '5 項計畫' is faithful, but '5' isn't a
+    literal digit in source. Word→digit expansion catches this."""
+    assert numeric_guardrail_pass(
+        "five oncology programs spanning targeted therapy",
+        "5 項腫瘤標靶療法計畫",
+    ) is True
+
+
+def test_invented_number_still_fails_after_expansion():
+    """Expansion only adds known cardinals/months; a hallucinated $300M
+    where source said $200M should still trip."""
+    assert numeric_guardrail_pass(
+        "two hundred million dollars in milestones", "$3 億美元里程碑"
+    ) is False

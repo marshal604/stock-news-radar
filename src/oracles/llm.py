@@ -189,14 +189,38 @@ def translate_title_to_chinese(title: str, *, model: str = SECONDARY_MODEL, time
     return translation
 
 
+_NUMBER_WORDS = {
+    # cardinal numbers
+    "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+    "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10",
+    "eleven": "11", "twelve": "12", "thirteen": "13", "fourteen": "14",
+    "fifteen": "15", "sixteen": "16", "seventeen": "17", "eighteen": "18",
+    "nineteen": "19", "twenty": "20", "thirty": "30", "forty": "40",
+    "fifty": "50", "sixty": "60", "seventy": "70", "eighty": "80",
+    "ninety": "90", "hundred": "100",
+    # English month names (translated to Chinese as digits, e.g. May → 5月)
+    "january": "1", "february": "2", "march": "3", "april": "4",
+    "may": "5", "june": "6", "july": "7", "august": "8",
+    "september": "9", "october": "10", "november": "11", "december": "12",
+}
+_NUMBER_WORD_RE = re.compile(
+    r"\b(" + "|".join(_NUMBER_WORDS.keys()) + r")\b", re.IGNORECASE
+)
+
+
 def numeric_guardrail_pass(source: str, translation: str) -> bool:
     """True iff every digit in `translation` also appears in `source`.
 
-    Catches LLM digit hallucinations in translation tasks (e.g. inserting
-    monetary amounts not present in the original). Set semantics — order and
-    multiplicity ignored — because translations may rephrase but should not
-    introduce new numeric facts."""
+    Catches LLM digit hallucinations in translation tasks (e.g. inventing
+    monetary amounts not present in the original). Set semantics.
+
+    Number-word expansion: when source contains English number words or
+    month names ('May', 'five', 'two hundred'), the digit equivalents are
+    treated as 'in source' too. Otherwise faithful translations like
+    'May 1' → '5 月 1 日' would false-positive trip on digit 5."""
     src_digits = set(re.findall(r"\d", source))
+    for match in _NUMBER_WORD_RE.finditer(source):
+        src_digits.update(_NUMBER_WORDS[match.group(1).lower()])
     out_digits = set(re.findall(r"\d", translation))
     return out_digits.issubset(src_digits)
 
