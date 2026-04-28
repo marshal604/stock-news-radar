@@ -22,10 +22,10 @@ from .oracles import (
     check_consistency,
     classify_with_llm,
     score_keywords,
+    translate_title_to_chinese,
     verify_quotes,
 )
 from .oracles.keyword import KeywordScore
-from .oracles.llm import SECONDARY_MODEL
 from .oracles.substring import SubstringResult
 from .qc import QCLogger
 from .sources import (
@@ -337,69 +337,46 @@ def _apply_self_consistency(
 def _critical_path(
     item: NewsItem, tickers: List[str], config: PipelineConfig
 ) -> Tuple[TierDecision, Optional[LLMVerdict]]:
-    """SEC EDGAR fast-path. Substring check informs summary trust; LLM (Sonnet) translates only.
+    """SEC EDGAR fast-path. CIK-bound, so relevance is guaranteed.
 
     Trust hierarchy: 8-K is the company's own legal filing — we always alert.
-    LLM is used solely to translate/summarize. If substring oracle catches the LLM
-    fabricating quotes (B6), we set summary_caveat=True so Discord shows a warning
-    rather than potentially misleading prose."""
+    Per review item #3a: LLM is used ONLY to translate the title — never to
+    classify, never to summarize. Pure translation has a numeric guardrail (any
+    digit in the translation must come from the title) and falls back to a safe
+    template string on hallucination or LLM failure. This is more conservative
+    than the previous classify-and-caveat approach: there is no path by which a
+    hallucinated number reaches Discord."""
+    from .oracles.schema import LLMVerdict as _Verdict, TickerRelevance
+
     primary_ticker = tickers[0]
-    try:
-        verdict = classify_with_llm(
-            tickers=tickers,
-            url=item.url,
-            title=item.title,
-            raw_text=item.raw_text,
-            published=item.published_at.isoformat(),
-            source=item.source,
-            publisher=item.publisher,
-            model=SECONDARY_MODEL,
-        )
-        sub = verify_quotes(verdict, item.raw_text)
-        caveat = not sub.ok
-        if caveat:
-            logger.warning(
-                "CRITICAL path: substring failed (%s) — alert with summary_caveat",
-                sub.failed_quotes,
+    chinese_summary = translate_title_to_chinese(item.title)
+
+    verdict = _Verdict(
+        ticker_relevance={
+            primary_ticker: TickerRelevance(
+                is_relevant=True,
+                ticker_appears_verbatim=True,
+                mention_quotes=[],
+                relevance_type="company-specific",
+                confidence=1.0,
             )
-        return (
-            TierDecision(
-                tier="CRITICAL",
-                reasons=["substring_failed_but_critical"] if caveat else [],
-                primary_ticker=primary_ticker,
-                summary_caveat=caveat,
-            ),
-            verdict,
-        )
-    except LLMOracleError as e:
-        logger.warning("CRITICAL path LLM failed for %s — sending raw alert: %s", item.url, e)
-        from .oracles.schema import LLMVerdict as _Verdict, TickerRelevance
-        synthetic = _Verdict(
-            ticker_relevance={
-                primary_ticker: TickerRelevance(
-                    is_relevant=True,
-                    ticker_appears_verbatim=True,
-                    mention_quotes=[],
-                    relevance_type="company-specific",
-                    confidence=1.0,
-                )
-            },
-            publish_date_iso=item.published_at.isoformat(),
-            sentiment="neutral",
-            category="regulatory",
-            should_alert=True,
-            alert_tier="high",
-            chinese_summary=item.title,
-        )
-        return (
-            TierDecision(
-                tier="CRITICAL",
-                reasons=["llm_failed_but_critical"],
-                primary_ticker=primary_ticker,
-                summary_caveat=True,
-            ),
-            synthetic,
-        )
+        },
+        publish_date_iso=item.published_at.isoformat(),
+        sentiment="neutral",
+        category="regulatory",
+        should_alert=True,
+        alert_tier="high",
+        chinese_summary=chinese_summary,
+    )
+    return (
+        TierDecision(
+            tier="CRITICAL",
+            reasons=[],
+            primary_ticker=primary_ticker,
+            summary_caveat=False,
+        ),
+        verdict,
+    )
 
 
 def _candidate_tickers(item: NewsItem, config: PipelineConfig) -> List[str]:

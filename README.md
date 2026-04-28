@@ -8,6 +8,10 @@ UUUU + TEM 即時新聞 radar。每 4 小時輪詢多個來源（SEC EDGAR、Fin
 
 兩個不同 model 比兩個不同 prompt 更獨立 — differential testing 訊號更強。
 
+模型 ID 透過 env var override（換代不用改 code）：
+- `RADAR_PRIMARY_MODEL`（預設 `claude-opus-4-7`）
+- `RADAR_SECONDARY_MODEL`（預設 `claude-sonnet-4-6`）
+
 ## Architecture
 
 採用 [harness-engineering](../harness-engineering/cheatsheet.md) 的 6 步法：

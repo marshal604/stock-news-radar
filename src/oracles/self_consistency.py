@@ -1,8 +1,14 @@
-"""Layer 3 oracle: self-consistency check via differential prompt phrasing.
+"""Layer 3 oracle: self-consistency check across two independent LLM passes.
 
-Run the LLM oracle twice with different system prompts (classifier vs auditor framing).
-If both converge on should_alert and alert_tier, judgment is trustworthy. Divergence
-signals prompt-sensitivity rather than article-grounded reasoning → downgrade or drop."""
+Cross-model differential (Opus primary vs Sonnet auditor). Consistent iff:
+  - should_alert agrees
+  - is_relevant agrees per ticker
+
+`alert_tier` is intentionally NOT compared. It is an LLM-emitted hint, not ground
+truth — Opus and Sonnet have different internal thresholds for high vs medium.
+The real tier is derived by pipeline.decide_tier() from source confidence + kw +
+substring + relevance, which is deterministic. Comparing LLM tier labels would
+manufacture false disagreements (most HIGH would silently demote)."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -15,10 +21,11 @@ from .schema import LLMVerdict
 class ConsistencyResult:
     consistent: bool
     primary_alert: bool
-    primary_tier: str
+    primary_tier: str       # diagnostic only; not used to compute consistent
     auditor_alert: bool
-    auditor_tier: str
-    relevance_diff: Dict[str, str]  # ticker -> reason if mismatch
+    auditor_tier: str       # diagnostic only
+    tier_diff: bool         # diagnostic only — does NOT affect consistent
+    relevance_diff: Dict[str, str]
 
 
 def check_consistency(primary: LLMVerdict, auditor: LLMVerdict) -> ConsistencyResult:
@@ -33,8 +40,7 @@ def check_consistency(primary: LLMVerdict, auditor: LLMVerdict) -> ConsistencyRe
             )
 
     alert_match = primary.should_alert == auditor.should_alert
-    tier_match = primary.alert_tier == auditor.alert_tier
-    consistent = alert_match and tier_match and not relevance_diff
+    consistent = alert_match and not relevance_diff
 
     return ConsistencyResult(
         consistent=consistent,
@@ -42,5 +48,6 @@ def check_consistency(primary: LLMVerdict, auditor: LLMVerdict) -> ConsistencyRe
         primary_tier=primary.alert_tier,
         auditor_alert=auditor.should_alert,
         auditor_tier=auditor.alert_tier,
+        tier_diff=primary.alert_tier != auditor.alert_tier,
         relevance_diff=relevance_diff,
     )
