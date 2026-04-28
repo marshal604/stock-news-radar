@@ -526,6 +526,7 @@ def _verdict_details(verdict: Optional[LLMVerdict]) -> dict:
         "alert_tier": verdict.alert_tier,
         "sentiment": verdict.sentiment,
         "category": verdict.category,
+        "chinese_summary": verdict.chinese_summary,  # capture for QC inspection
         "ticker_relevance": {
             t: {
                 "is_relevant": r.is_relevant,
