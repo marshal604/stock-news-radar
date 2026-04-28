@@ -1,0 +1,16 @@
+{
+  "id": "tem-templeton-collision",
+  "ticker_target": "TEM",
+  "url": "https://example.com/templeton-em-fund-dividend",
+  "title": "Templeton Emerging Markets Income Fund Declares Quarterly Distribution",
+  "raw_text": "Templeton Emerging Markets Income Fund (NYSE: TEM) announced its regular quarterly distribution of $0.18 per share, payable to shareholders of record. Note this is not Tempus AI Inc.",
+  "publisher": "Synthetic",
+  "source": "google_news",
+  "expected": {
+    "keyword_pass": false,
+    "should_alert": false,
+    "relevance_type": "ticker_collision",
+    "drop_reason": "ticker_disambiguation"
+  },
+  "rationale": "Synthetic. Tests the disambiguation guard for TEM ticker collision with Templeton Emerging Markets."
+}

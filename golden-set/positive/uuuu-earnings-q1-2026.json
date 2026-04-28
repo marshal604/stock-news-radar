@@ -1,0 +1,16 @@
+{
+  "id": "uuuu-earnings-q1-2026",
+  "ticker_target": "UUUU",
+  "url": "https://www.prnewswire.com/news-releases/energy-fuels-announces-call-details-for-q1-2026-earnings",
+  "title": "Energy Fuels Announces Call Details for Q1-2026 Earnings",
+  "raw_text": "Energy Fuels Inc. (NYSE: UUUU) (TSX: EFR) (\"Energy Fuels\" or the \"Company\") announced today that it will release its first quarter 2026 financial results before market open on May 5, 2026. The Company will host a conference call to discuss the results.",
+  "publisher": "PR Newswire",
+  "source": "finviz",
+  "expected": {
+    "keyword_pass": true,
+    "should_alert": true,
+    "relevance_type": "company-specific",
+    "alert_tier": "high"
+  },
+  "rationale": "Earnings announcement, ticker explicit, primary subject."
+}

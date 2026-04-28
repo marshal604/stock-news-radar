@@ -1,0 +1,16 @@
+{
+  "id": "uuuu-trump-moon",
+  "ticker_target": "UUUU",
+  "url": "https://www.barrons.com/articles/nuclear-reactors-moon-stocks",
+  "title": "Trump Wants Nuclear Reactors on the Moon. 4 Stocks That Will Benefit.",
+  "raw_text": "Trump's push for lunar nuclear reactors could lift several stocks. Watch these 4 stocks: CCJ, UUUU, LEU, and BWXT. Best stocks to position around the policy shift.",
+  "publisher": "Barron's",
+  "source": "finviz",
+  "expected": {
+    "keyword_pass": false,
+    "should_alert": false,
+    "relevance_type": "buzzword-list-only",
+    "drop_reason": "exclude_strict_hit"
+  },
+  "rationale": "Title and body frame UUUU as one of N stocks; classic buzzword-list pattern. Contains 'best stocks'."
+}

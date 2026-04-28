@@ -1,0 +1,16 @@
+{
+  "id": "tem-usc-collab",
+  "ticker_target": "TEM",
+  "url": "https://www.businesswire.com/news/tempus-usc-precision-medicine",
+  "title": "Tempus and USC Announce Strategic Collaboration to Accelerate AI-Driven Precision Medicine",
+  "raw_text": "Tempus AI, Inc. (NASDAQ: TEM) today announced a strategic collaboration with the University of Southern California to advance AI-driven precision medicine through expanded access to genomic data and clinical research infrastructure.",
+  "publisher": "Business Wire",
+  "source": "finviz",
+  "expected": {
+    "keyword_pass": true,
+    "should_alert": true,
+    "relevance_type": "company-specific",
+    "alert_tier": "medium"
+  },
+  "rationale": "Academic partnership; primary subject; not market-moving on its own → medium tier."
+}

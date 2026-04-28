@@ -1,0 +1,63 @@
+name: poll
+
+on:
+  schedule:
+    - cron: "0 */4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: poll
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: date
+        run: echo "today=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          npm install -g @anthropic-ai/claude-code
+
+      - name: Restore seen-state cache
+        uses: actions/cache@v4
+        with:
+          path: data/
+          key: seen-${{ steps.date.outputs.today }}-${{ github.run_id }}
+          restore-keys: |
+            seen-${{ steps.date.outputs.today }}-
+
+      - name: Run pipeline
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python -m src.main
+
+      - name: Upload QC artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qc-${{ github.run_id }}
+          path: |
+            qc/daily-report.json
+            data/processed-log.ndjson
+          if-no-files-found: ignore
+          retention-days: 7

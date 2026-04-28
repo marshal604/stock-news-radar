@@ -1,0 +1,16 @@
+{
+  "id": "tem-investors-radar-list",
+  "ticker_target": "TEM",
+  "url": "https://www.benzinga.com/markets/investors-radars-today",
+  "title": "AMD, Zeta Global, MercadoLibre, Tempus AI And Workday on Investors' Radars Today",
+  "raw_text": "Five names are catching investor attention this morning: AMD, Zeta Global, MercadoLibre, Tempus AI, and Workday. Each of these stocks has unusual options activity to monitor.",
+  "publisher": "Benzinga",
+  "source": "finviz",
+  "expected": {
+    "keyword_pass": false,
+    "should_alert": false,
+    "relevance_type": "buzzword-list-only",
+    "drop_reason": "exclude_strict_hit"
+  },
+  "rationale": "TEM appears only in a stock list. Title contains exclude term 'Investors' Radars'."
+}

@@ -1,0 +1,51 @@
+{
+  "_comment": "Source whitelist + URL templates. confidence (critical/high/medium) feeds Phase 1 source-confidence labeling. {ticker}/{cik} are template variables.",
+  "edgar": {
+    "type": "rss",
+    "confidence": "critical",
+    "ticker_specific": true,
+    "url_template": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik}&type=8-K&dateb=&owner=include&count=20&output=atom",
+    "user_agent_required": true,
+    "notes": "8-K filings = official material events. Fastest legal source; highest confidence."
+  },
+  "yahoo": {
+    "type": "library",
+    "confidence": "high",
+    "ticker_specific": true,
+    "enabled": false,
+    "library": "yfinance",
+    "method": "Ticker(symbol).news",
+    "notes": "DISABLED 2026-04-28: yfinance returns faulty response from Yahoo (anti-bot block). Most Yahoo Finance content is covered via Finviz aggregation + Google News. Re-enable when yfinance lib catches up."
+  },
+  "finviz": {
+    "type": "scrape",
+    "confidence": "high",
+    "ticker_specific": true,
+    "url_template": "https://finviz.com/quote.ashx?t={ticker}&p=d",
+    "html_table_id": "news-table",
+    "notes": "Aggregator; high editorial filter. Requires User-Agent header."
+  },
+  "google_news": {
+    "type": "rss",
+    "confidence": "medium",
+    "ticker_specific": false,
+    "url_template": "https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en",
+    "notes": "Topic/keyword-driven. Used for non-ticker-specific signal (FDA news, DOE policy, uranium market). Lowest precision; relies hardest on LLM oracle."
+  },
+  "google_news_queries": {
+    "UUUU": [
+      "\"Energy Fuels\" UUUU",
+      "\"uranium spot price\"",
+      "\"NRC ruling\" uranium",
+      "\"DOE uranium reserve\"",
+      "\"Russia uranium ban\""
+    ],
+    "TEM": [
+      "\"Tempus AI\" TEM",
+      "\"FDA AI device\"",
+      "\"Medicare drug pricing reform\"",
+      "\"IRA Medicare negotiation\"",
+      "\"AI precision medicine FDA\""
+    ]
+  }
+}

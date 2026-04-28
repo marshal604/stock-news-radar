@@ -1,0 +1,10 @@
+services:
+  radar:
+    build: .
+    environment:
+      - CLAUDE_CODE_OAUTH_TOKEN
+      - DISCORD_WEBHOOK_URL
+    volumes:
+      - ./data:/app/data
+      - ./qc:/app/qc
+    command: python -m src.main

@@ -1,0 +1,16 @@
+{
+  "id": "tem-merck-deal",
+  "ticker_target": "TEM",
+  "url": "https://www.businesswire.com/news/tempus-merck-precision-medicine",
+  "title": "Tempus Announces Strategic Collaboration Agreement with Merck to Accelerate AI-Driven Precision Medicine",
+  "raw_text": "Tempus AI, Inc. (NASDAQ: TEM), a leader in AI-driven precision medicine, today announced a strategic collaboration with Merck to accelerate the use of real-world data and genomic profiling in oncology drug development.",
+  "publisher": "Business Wire",
+  "source": "finviz",
+  "expected": {
+    "keyword_pass": true,
+    "should_alert": true,
+    "relevance_type": "company-specific",
+    "alert_tier": "high"
+  },
+  "rationale": "Major pharma partnership; primary subject; material catalyst."
+}

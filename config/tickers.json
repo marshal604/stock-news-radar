@@ -1,0 +1,28 @@
+{
+  "UUUU": {
+    "company_name": "Energy Fuels",
+    "company_aliases": ["Energy Fuels Inc", "Energy Fuels Inc.", "EFR"],
+    "exchange": ["NYSE", "TSX"],
+    "ticker_aliases": ["UUUU", "$UUUU", "NYSE: UUUU", "NYSE:UUUU", "(UUUU)", "TSX: EFR"],
+    "ceos": ["Ross Bhappu", "Mark Chalmers"],
+    "cik": "0001385849",
+    "sector": "Energy / Mining",
+    "business_summary": "U.S. uranium and rare earth producer; vanadium, heavy rare earth oxides, conventional uranium mining.",
+    "competitor_tickers": ["CCJ", "UEC", "LEU", "DNN", "NXE", "URG"]
+  },
+  "TEM": {
+    "company_name": "Tempus AI",
+    "company_aliases": ["Tempus AI Inc", "Tempus AI, Inc.", "Tempus, Inc."],
+    "exchange": ["NASDAQ"],
+    "ticker_aliases": ["TEM", "$TEM", "NASDAQ: TEM", "NASDAQ:TEM", "(TEM)"],
+    "ceos": ["Eric Lefkofsky"],
+    "cik": "0001717115",
+    "sector": "Healthcare / AI",
+    "business_summary": "AI-driven precision medicine; oncology genomic profiling, real-world data, diagnostics.",
+    "competitor_tickers": ["ILMN", "GH", "VCYT", "NTRA", "EXAS"],
+    "ticker_collisions": [
+      "Templeton Emerging Markets (TEM in some foreign markets)",
+      "TEMPO Automation (different ticker)"
+    ]
+  }
+}

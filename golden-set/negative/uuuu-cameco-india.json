@@ -1,0 +1,16 @@
+{
+  "id": "uuuu-cameco-india",
+  "ticker_target": "UUUU",
+  "url": "https://www.zacks.com/stock/news/cameco-india-uranium",
+  "title": "Cameco Inks $1.9B Long-Term Uranium Supply Deal With India",
+  "raw_text": "Cameco Corporation (NYSE: CCJ) announced a $1.9 billion uranium supply agreement with India, strengthening its global commercial footprint in nuclear fuel markets. The deal positions Cameco as a leading supplier to emerging Asian nuclear programs.",
+  "publisher": "Zacks",
+  "source": "finviz",
+  "expected": {
+    "keyword_pass": false,
+    "should_alert": false,
+    "relevance_type": "macro-tangential",
+    "drop_reason": "must_have_not_present"
+  },
+  "rationale": "About Cameco (CCJ), not Energy Fuels. Same sector but different ticker."
+}

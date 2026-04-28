@@ -1,0 +1,16 @@
+{
+  "id": "uuuu-ceo-change",
+  "ticker_target": "UUUU",
+  "url": "https://www.prnewswire.com/news-releases/ross-bhappu-ceo-energy-fuels",
+  "title": "Ross Bhappu to Take Over as CEO of Energy Fuels as Company Enters Next Phase of Growth",
+  "raw_text": "Energy Fuels Inc. (NYSE: UUUU) today announced that Ross Bhappu has been appointed as Chief Executive Officer, succeeding Mark Chalmers, as the Company enters its next phase of growth in uranium and rare earth production.",
+  "publisher": "PR Newswire",
+  "source": "finviz",
+  "expected": {
+    "keyword_pass": true,
+    "should_alert": true,
+    "relevance_type": "company-specific",
+    "alert_tier": "high"
+  },
+  "rationale": "CEO succession is material exec change for UUUU."
+}

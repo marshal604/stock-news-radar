@@ -1,0 +1,16 @@
+{
+  "id": "uuuu-rare-earth-production",
+  "ticker_target": "UUUU",
+  "url": "https://www.prnewswire.com/news-releases/energy-fuels-first-us-heavy-rare-earth",
+  "title": "Energy Fuels Announces First U.S. Primary Production of Critical \"Heavy\" Rare Earth Material in Decades",
+  "raw_text": "Energy Fuels Inc. (NYSE: UUUU) announced first commercial-scale production of dysprosium oxide at its White Mesa Mill, marking the first primary U.S. production of heavy rare earth material in decades. The achievement supports U.S. national security goals around critical minerals supply.",
+  "publisher": "PR Newswire",
+  "source": "finviz",
+  "expected": {
+    "keyword_pass": true,
+    "should_alert": true,
+    "relevance_type": "company-specific",
+    "alert_tier": "high"
+  },
+  "rationale": "Operational milestone + national security angle. Material catalyst for UUUU."
+}

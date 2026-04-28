@@ -1,0 +1,142 @@
+{
+  "_comment": "Layer 2-A keyword oracle. Path A in differential testing. High recall, lower precision. Pairs with LLM oracle.",
+  "UUUU": {
+    "must_have_one_of": [
+      "UUUU",
+      "Energy Fuels"
+    ],
+    "should_have": {
+      "business": [
+        "uranium",
+        "rare earth",
+        "REE",
+        "vanadium",
+        "critical minerals",
+        "heavy rare earth",
+        "uranium production",
+        "uranium deposit",
+        "nuclear fuel",
+        "uranium spot price",
+        "yellowcake",
+        "U3O8",
+        "White Mesa",
+        "Pinyon Plain"
+      ],
+      "regulation": [
+        "DOE",
+        "Department of Energy",
+        "NRC",
+        "Nuclear Regulatory Commission",
+        "Strategic Uranium Reserve",
+        "uranium reserve",
+        "executive order",
+        "Section 232",
+        "Defense Production Act"
+      ],
+      "geopolitics": [
+        "Russia uranium",
+        "Russian uranium",
+        "Kazakhstan",
+        "China rare earth",
+        "Cameco",
+        "Rosatom",
+        "Tenex"
+      ],
+      "people": [
+        "Ross Bhappu",
+        "Mark Chalmers"
+      ]
+    },
+    "exclude_strict": [
+      "Top 10",
+      "Top 5",
+      "stocks to buy",
+      "best stocks",
+      "5 stocks",
+      "watchlist",
+      "penny stocks",
+      "stocks to watch this week"
+    ],
+    "scoring": {
+      "must_have_weight": 1.0,
+      "should_have_weight": 0.2,
+      "exclude_penalty": -1.5,
+      "min_score_to_pass": 1.0
+    }
+  },
+  "TEM": {
+    "must_have_one_of": [
+      "Tempus AI",
+      "Tempus, Inc",
+      "Tempus AI Inc"
+    ],
+    "should_have": {
+      "business": [
+        "AI healthcare",
+        "precision medicine",
+        "AI-driven",
+        "oncology",
+        "genomic",
+        "genomics",
+        "whole-genome sequencing",
+        "WGS",
+        "diagnostics",
+        "real-world data",
+        "RWE",
+        "clinical trial",
+        "biomarker",
+        "ADC",
+        "antibody-drug conjugate",
+        "next-generation sequencing",
+        "NGS"
+      ],
+      "regulation": [
+        "FDA",
+        "Medicare",
+        "drug pricing",
+        "PBM",
+        "IRA",
+        "CMS",
+        "AI device approval",
+        "reimbursement",
+        "Inflation Reduction Act",
+        "Medicare negotiation",
+        "FDA approval",
+        "FDA clearance"
+      ],
+      "partners": [
+        "Merck",
+        "Gilead",
+        "Daiichi Sankyo",
+        "AstraZeneca",
+        "Predicta Biosciences",
+        "Personalis",
+        "USC",
+        "Blood Cancer United"
+      ],
+      "people": [
+        "Eric Lefkofsky"
+      ]
+    },
+    "exclude_strict": [
+      "Top 10",
+      "Top 5",
+      "stocks to watch",
+      "Cathie Wood Buys",
+      "Investors' Radars",
+      "best AI stocks",
+      "AI stocks to buy"
+    ],
+    "ticker_disambiguation_required": [
+      "Templeton Emerging Markets",
+      "TEMPO Automation",
+      "Tempo Holdings"
+    ],
+    "scoring": {
+      "must_have_weight": 1.0,
+      "should_have_weight": 0.2,
+      "exclude_penalty": -1.5,
+      "min_score_to_pass": 1.0
+    }
+  }
+}
