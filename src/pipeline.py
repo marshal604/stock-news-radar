@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from .article_fetcher import fetch_article_body
 from .discord import DiscordPostError, format_alert, post_discord
 from .oracles import (
     LLMOracleError,
@@ -153,7 +154,14 @@ def run(config: PipelineConfig) -> dict:
                 config.max_items_per_run,
             )
             for item in overflow:
-                qc.log(item=item, verdict="DEFER", reasons=["max_items_per_run_exceeded"])
+                # #3 starvation observability: tag reason with source_confidence
+                # so daily-report shows e.g. 'reason:max_items_per_run_exceeded:medium'.
+                # If medium starves while high deferred=0, priority queue is needed (v2).
+                qc.log(
+                    item=item,
+                    verdict="DEFER",
+                    reasons=[f"max_items_per_run_exceeded:{item.source_confidence}"],
+                )
                 # NB: do NOT mark_seen — these need to be re-processed next run
             stats["deferred"] = len(overflow)
         stats["fresh"] = len(fresh)
@@ -193,6 +201,11 @@ def run(config: PipelineConfig) -> dict:
         if not config.dry_run:
             store.gc_old_days(keep_days=2)
         qc.flush_daily_report()
+
+        # #2: source fetch failures → active Discord alert. Daily-report alone is
+        # passive observability; if EDGAR is stuck for hours, user might miss 4
+        # 8-K filings before grepping the report. Push the failure live.
+        _alert_on_source_anomalies(qc, config)
     finally:
         qc.close()
         store.close()
@@ -241,6 +254,12 @@ def _process_item(
             None,
         )
 
+    # M1: enrich raw_text with article body before LLM. Body fetch is best-effort;
+    # falls back to original raw_text on any failure (paywall, timeout, bot ban).
+    # Critical: enriched_text must be used by verify_quotes + numeric_guardrail too
+    # so LLM-quoted phrases from the body actually substring-match.
+    enriched_text = _enrich_with_body(item)
+
     # Path B: LLM classifier (Opus)
     qc.record_llm_call("primary")
     try:
@@ -248,7 +267,7 @@ def _process_item(
             tickers=target_tickers,
             url=item.url,
             title=item.title,
-            raw_text=item.raw_text,
+            raw_text=enriched_text,
             published=item.published_at.isoformat(),
             source=item.source,
             publisher=item.publisher,
@@ -257,13 +276,11 @@ def _process_item(
         logger.warning("LLM classify failed for %s: %s", item.url, e)
         return TierDecision(tier="REVIEW", reasons=[f"llm_error:{e}"]), None
 
-    substring_result = verify_quotes(primary_verdict, item.raw_text)
+    substring_result = verify_quotes(primary_verdict, enriched_text)
 
-    # M4: numeric guardrail on classifier-emitted chinese_summary. Catches LLM
-    # inventing monetary amounts/dates not in the source. We don't drop the alert
-    # (relevance is still likely valid) — just flag the summary as untrustworthy
-    # so format_alert prints '[摘要待確認]' instead of the hallucinated text.
-    summary_caveat = not numeric_guardrail_pass(item.raw_text, primary_verdict.chinese_summary)
+    # M4: numeric guardrail on classifier-emitted chinese_summary against the
+    # enriched text — body-fetched numbers count as 'in source' too.
+    summary_caveat = not numeric_guardrail_pass(enriched_text, primary_verdict.chinese_summary)
     if summary_caveat:
         logger.warning(
             "classifier_numeric_hallucination url=%s title=%r summary=%r",
@@ -436,6 +453,46 @@ def _critical_path(
         ),
         verdict,
     )
+
+
+def _alert_on_source_anomalies(qc: QCLogger, config: PipelineConfig) -> None:
+    """If any source fetch failed this run, post a live Discord alert.
+
+    EDGAR especially: silent zero-fetch could cause us to miss multiple 8-K
+    filings between daily-report glances. Surfacing the anomaly to the same
+    channel turns 'eventual visibility' into 'immediate visibility'."""
+    anomalies = {
+        k.split(":", 1)[1]: v
+        for k, v in qc._counters.items()
+        if k.startswith("source_anomaly:")
+    }
+    if not anomalies:
+        return
+    if config.dry_run:
+        logger.info("[DRY RUN] would alert on source anomalies: %s", anomalies)
+        return
+    summary = ", ".join(f"{src}={count}" for src, count in sorted(anomalies.items()))
+    msg = f"⚠️ stock-news-radar: source fetch failures this run — {summary}"
+    try:
+        post_discord(msg)
+    except DiscordPostError as e:
+        logger.error("could not post source anomaly alert: %s", e)
+
+
+def _enrich_with_body(item: NewsItem) -> str:
+    """Append fetched article body to raw_text. Falls back to original on failure.
+
+    NewsItem stays immutable; this returns a new enriched string that the LLM,
+    substring oracle, and numeric guardrail all share. Without this, raw_text was
+    title-only (Finviz) or title+200-char-summary (Google News), which is not
+    enough signal for relevance_type / sentiment / chinese_summary judgments
+    (see commit log: M1 rationale).
+    """
+    body = fetch_article_body(item.url)
+    if not body:
+        return item.raw_text
+    logger.info("enriched %s with %d-char body", item.url[:80], len(body))
+    return f"{item.raw_text}\n\n--- ARTICLE BODY ---\n{body}"
 
 
 def _detect_suspicious_should_alert_veto(verdict: LLMVerdict) -> bool:
