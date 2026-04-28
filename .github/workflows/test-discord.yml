@@ -1,0 +1,34 @@
+name: test-discord
+
+# Manual smoke test for the Discord webhook. Posts a single message to confirm
+# the webhook URL secret is reachable and the receiving channel is set up
+# correctly. Independent of the pipeline so it works regardless of whether
+# today's news qualifies for alerts.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Post test message
+        env:
+          DISCORD_WEBHOOK_URL_RAW: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          URL="$(printf '%s' "$DISCORD_WEBHOOK_URL_RAW" | tr -d '[:space:]')"
+          if [ -z "$URL" ]; then
+            echo "DISCORD_WEBHOOK_URL secret is empty"
+            exit 1
+          fi
+          STAMP=$(date -u +%FT%TZ)
+          curl -sSf -X POST "$URL" \
+            -H 'Content-Type: application/json' \
+            -d "{\"content\":\"🧪 stock-news-radar webhook plumbing OK — ${STAMP} UTC\"}"
+          echo
+          echo "✓ webhook accepted"
