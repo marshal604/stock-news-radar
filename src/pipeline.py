@@ -259,9 +259,17 @@ def decide_tier(
         return TierDecision(tier="DROP", reasons=["llm_no_relevant_or_buzzword_only"])
 
     if not primary_verdict.should_alert:
+        # Schema-gap watch: when LLM marks a ticker is_relevant=true with
+        # relevance_type in {company-specific, sector-policy} BUT vetoes via
+        # should_alert=false, that is the LLM hiding a value judgment in a
+        # boolean. Counted separately so we can data-drive the decision to
+        # expand relevance_type buckets (modification A in design notes).
+        reasons = ["llm_should_not_alert"]
+        if _detect_suspicious_should_alert_veto(primary_verdict):
+            reasons.append("schema_gap_suspicious_veto")
         return TierDecision(
             tier="DROP",
-            reasons=["llm_should_not_alert"],
+            reasons=reasons,
             primary_ticker=relevant[0],
         )
 
@@ -394,6 +402,21 @@ def _critical_path(
             summary_caveat=False,
         ),
         verdict,
+    )
+
+
+def _detect_suspicious_should_alert_veto(verdict: LLMVerdict) -> bool:
+    """Detect the schema-gap pattern: LLM said relevant + company-specific/sector-policy
+    yet vetoed via should_alert=false.
+
+    This pattern means the LLM has a value judgment ('not material enough', 'just a
+    recap', '13F flow doesn't matter') but no schema bucket fits, so it leaks the
+    decision through should_alert. Counted in QC; high frequency (>20% of fresh
+    over a week) is the signal that relevance_type buckets need expanding (see
+    alert-rules.md §schema-gap-watch)."""
+    return any(
+        rel.is_relevant and rel.relevance_type in ("company-specific", "sector-policy")
+        for rel in verdict.ticker_relevance.values()
     )
 
 

@@ -70,6 +70,69 @@ LLM 在 Magenta-key contract 同步輸出（critical path 不適用，固定 neu
 - `sentiment ∈ {bullish, bearish, neutral, mixed}` → emoji 顏色
 - `category ∈ {earnings, regulatory, M&A, analyst, rumor, macro, partnership}` → tag
 
+## §schema-gap-watch（2026-04-28 起，instrumentation）
+
+### 為什麼留這個 watch
+
+`relevance_type` 目前只有 4 桶（`company-specific` / `sector-policy` / `macro-tangential` / `buzzword-list-only`），但實際新聞至少有 7-8 種：
+
+| 案例 | 應該對應的 bucket | 現狀 LLM 怎麼處理 |
+|------|------------------|------------------|
+| Earnings, M&A, FDA approval, exec change | `company-news`（缺） | 強塞 `company-specific` + `should_alert=true` |
+| 「6 個月前我說...」回顧文 | `company-recap`（缺） | 強塞 `company-specific` + `should_alert=false`（**veto**） |
+| 13F、機構增減持、insider trade | `company-holdings`（缺） | 強塞 `company-specific` + `should_alert=false`（**veto**） |
+| Roth Capital 評級調整 | `company-analyst`（缺） | 強塞 `company-specific` + `should_alert=false`（**veto**） |
+| Sector regulation explicitly impacting target | `sector-policy` | OK |
+| 鈾現貨價漲（不直接提 UUUU） | `macro-tangential` | OK |
+| 「Top 10 stocks」名單 | `buzzword-list-only` | OK |
+
+當 LLM 想表達「相關但不該打擾」，schema 沒地方放，就用 `should_alert=false` 當隱性閾值 veto。Contract 漏洞，不是 LLM 的錯。
+
+### 怎麼偵測
+
+`decide_tier` 加 counter `schema_gap_suspicious_veto`：當 LLM 說 `is_relevant=true` AND `relevance_type ∈ {company-specific, sector-policy}` 但又 `should_alert=false`，計一筆。
+
+機械可數，每天累積到 `qc/daily-report-YYYY-MM-DD.json` 的 `counters` 欄位：
+
+```json
+"counters": {
+  "reason:llm_should_not_alert": N,                  // 所有 should_alert=false 的數量
+  "reason:schema_gap_suspicious_veto": M             // 其中 M 是 schema gap 子集
+}
+```
+
+### 一週後的決策樹（嚴格門檻）
+
+跑滿 1 週（≈42 個 polls）後，分析 fresh 流量裡 `schema_gap_suspicious_veto` 占比：
+
+```bash
+# 累積 7 天 daily reports（auto-committed）
+jq -s 'map(.counters) | reduce .[] as $c ({}; . * $c)' qc/daily-report-2026-04-*.json
+```
+
+| 占 fresh 比例 | 判讀 | 行動 |
+|---------------|------|------|
+| **> 20%** | schema 真的漏接，LLM 在 hack | 做 modification A：`relevance_type` 擴成 7 桶（`company-news` / `company-recap` / `company-holdings` / `company-analyst` / `sector-policy` / `macro-tangential` / `buzzword-list-only`），should_alert 改為 pipeline-derived |
+| 5%-20% | 邊界 | 看擋下的 case 是哪種 pattern，挑一桶優先擴（例如只加 `company-analyst`） |
+| **< 5%** | 現狀可接受 | 不動 |
+
+不要拍腦袋先決定 — 用實際 7 天分布做。
+
+### FP / FN 不對稱（為什麼不是「保守=安全」）
+
+| 錯誤 | 成本 | 可觀測性 |
+|------|------|----------|
+| False positive（誤發 alert） | Alert fatigue，使用者忽略 | 看得到（使用者抱怨 / unsub） |
+| False negative（漏發 alert） | 錯過 trading opportunity | **看不到**，silent failure |
+
+漏一條 8-K 或 FDA approval 不會主動敲門。所以系統設計應 **surface 訊號 + 用戶決定要不要看**，不是替用戶過濾。`schema_gap_suspicious_veto` 就是用來量測「我們可能漏發了多少」。
+
+### v2 候選：5% DROP 隨機 audit
+
+目前 self-consistency 只跑 HIGH/MEDIUM tier — DROP path 沒 cross-model 驗證，是單邊覆蓋。如果 1 週後 `schema_gap_suspicious_veto` 占比真的高，可加：對 5% 隨機抽樣的 DROP 也跑 Sonnet auditor，比對 verdict 是否 disagree。Disagree 的 case 進 REVIEW，作為 schema 缺口的 ground truth corpus。
+
+成本：LLM 呼叫量多 5%。延後到看到實際 schema gap 訊號再做。
+
 ## T1 競爭對手訊號收集（2026-04-28 起，data-only）
 
 `source=competitor_finviz` 的 item 會被 pipeline early gate 強制走 REVIEW，**完全不打 LLM、完全不發 Discord**。reasons=`["competitor_signal_data_collection"]`。

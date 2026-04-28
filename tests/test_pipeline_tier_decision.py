@@ -145,15 +145,33 @@ def test_drop_when_buzzword_list_only():
     assert d.tier == "DROP"
 
 
-def test_drop_when_llm_says_dont_alert():
+def test_drop_when_llm_says_dont_alert_suspicious():
+    """company-specific + should_alert=false is the schema-gap pattern.
+    Both reasons should fire so QC counter tracks the suspicious sub-case."""
     d = decide_tier(
         source_confidence="high",
-        primary_verdict=_verdict("UUUU", should_alert=False),
+        primary_verdict=_verdict("UUUU", should_alert=False),  # default relevance_type=company-specific
         keyword_results={"UUUU": _kw("UUUU", True)},
         substring_result=_sub(),
     )
     assert d.tier == "DROP"
     assert "llm_should_not_alert" in d.reasons
+    assert "schema_gap_suspicious_veto" in d.reasons
+
+
+def test_drop_when_llm_says_dont_alert_legitimate():
+    """macro-tangential + should_alert=false is not suspicious — LLM has a clean
+    schema bucket to express 'not really about this ticker'."""
+    d = decide_tier(
+        source_confidence="high",
+        primary_verdict=_verdict("UUUU", relevance_type="macro-tangential", should_alert=False),
+        keyword_results={"UUUU": _kw("UUUU", True)},
+        substring_result=_sub(),
+    )
+    assert d.tier == "DROP"
+    # macro-tangential filters to llm_no_relevant_or_buzzword_only path,
+    # before reaching should_alert. Either way, suspicious flag must NOT fire.
+    assert "schema_gap_suspicious_veto" not in d.reasons
 
 
 def test_drop_total_quote_failure():
