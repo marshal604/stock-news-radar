@@ -1,12 +1,13 @@
 {
   "date": "2026-04-28",
-  "last_updated": "2026-04-28T10:01:41.914317+00:00",
-  "runs_today": 1,
+  "last_updated": "2026-04-28T10:04:30.788149+00:00",
+  "runs_today": 2,
   "counters": {
-    "verdict:DROP": 1595,
-    "reason:date_too_old": 1595,
+    "verdict:DROP": 3192,
+    "reason:date_too_old": 3189,
     "verdict:REVIEW": 4,
     "tier:REVIEW": 4,
-    "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr=''": 4
+    "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr=''": 4,
+    "reason:already_sent": 3
   }
 }
