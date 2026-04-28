@@ -27,6 +27,7 @@ def _verdict(should_alert: bool, alert_tier: str, is_relevant: bool = True) -> L
             "should_alert": should_alert,
             "alert_tier": alert_tier,
             "chinese_summary": "x",
+            "impact_assessment": "x",
         }
     )
 

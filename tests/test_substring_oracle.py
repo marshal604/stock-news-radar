@@ -24,6 +24,7 @@ def _make_verdict(ticker: str, quotes: list[str]) -> LLMVerdict:
             "should_alert": True,
             "alert_tier": "high",
             "chinese_summary": "測試摘要",
+            "impact_assessment": "測試影響",
         }
     )
 

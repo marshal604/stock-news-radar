@@ -137,6 +137,7 @@ def format_alert(
         f"{tier_emoji} **[{tier}] ${primary_ticker}** · {sentiment_emoji} {sentiment_label} · `{verdict.category}`",
         f"**{item.title}**",
         summary_line,
+        f"🎯 {verdict.impact_assessment}",
         f"📰 {item.publisher or item.source} · {published_str}",
         f"🔗 {item.url}",
     ]

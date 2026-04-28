@@ -43,13 +43,28 @@ CRITICAL RULES:
    - "sector-policy": article is about a regulation/event that EXPLICITLY mentions and impacts this ticker
    - "macro-tangential": article touches the sector but does NOT specifically discuss the company
    - "buzzword-list-only": ticker appears only as one of N stocks in a list, NOT as primary subject
-3. should_alert=true ONLY if relevance_type is "company-specific" or "sector-policy"
+3. should_alert=true ONLY if relevance_type is "company-specific" or "sector-policy" AND article describes MATERIAL news worthy of trader attention.
+   MATERIAL = earnings, M&A, FDA approval/rejection, lawsuit, exec change, large filing, partnership announcement, guidance change, product launch, regulatory action.
+   ROUTINE GOVERNANCE = annual proxy filing without surprises, regular 10-Q/10-K filing acknowledgement, scheduled earnings-call announcements, conference attendance announcements, generic investor relations PR.
+   Set should_alert=false for ROUTINE GOVERNANCE even when relevance_type=company-specific. User does not want to be paged on calendar items they don't act on.
 4. alert_tier:
    - "high": breaking material news (earnings, M&A, FDA approval/rejection, lawsuit, exec change, 8-K)
    - "medium": notable but not market-moving (analyst rating change, partnership announcement, study results)
    - "low": background context only
 5. Ticker disambiguation: TEM = Tempus AI on NASDAQ. If article refers to "Templeton Emerging Markets" or "TEMPO Automation" or other TEM-named entities, set is_relevant=false for TEM.
 6. Ticker disambiguation: UUUU = Energy Fuels on NYSE. Almost no collisions.
+7b. impact_assessment 規則（這個欄位讓用戶理解「為什麼」）：
+   a. 1 句繁體中文，30-60 字，明確回答「這對股價影響為何 + 原因」
+   b. 必須給方向（利多/利空/中性/混合）+ 強度（高/中/低/微）+ 一個機制原因
+   c. 範例好/壞：
+     好：「利多中度 — Tempus 與默克 5 種癌症藥物開發合作，預期 H2 開始貢獻 milestone payments」
+     好：「中性低 — 例行年度委託書，無併購或薪酬重大調整議案，僅董事連任」
+     好：「利空中度 — 機構連續 3 季減持 11%，可能引發 momentum 賣壓」
+     壞：「對股價影響有限」（無方向、無機制、無強度）
+     壞：「值得關注」「需持續追蹤」（廢話）
+   d. 不准 hedge 語：「影響中性」「值得關注」「有待觀察」直接違規
+   e. 跟 chinese_summary 的差異：summary 是事實，impact_assessment 是 AI 的解讀
+
 7. chinese_summary 規則（必讀，用戶看了就要知道發生什麼）：
    a. 必須說具體事實：誰、做了什麼、數字 / 產品名 / 夥伴名 / 機構名
    b. 禁止只說新聞「類別」：不准寫「屬例行揭露」「為一般公告」「屬公司治理事項」「規律性披露」
@@ -80,7 +95,8 @@ Schema (output exactly this shape):
   "category": "earnings"|"regulatory"|"M&A"|"analyst"|"rumor"|"macro"|"partnership",
   "should_alert": <bool>,
   "alert_tier": "high"|"medium"|"low",
-  "chinese_summary": "<繁體中文一句話>"
+  "chinese_summary": "<繁體中文 30-50 字 描述事實>",
+  "impact_assessment": "<繁體中文 30-60 字 AI 對股價影響判斷+機制原因>"
 }"""
 
 # Self-consistency uses a different framing to test if the model anchors on the article
@@ -106,12 +122,17 @@ Output ONLY a JSON object with the following schema (no prose, no markdown):
   "category": "earnings"|"regulatory"|"M&A"|"analyst"|"rumor"|"macro"|"partnership",
   "should_alert": <bool>,
   "alert_tier": "high"|"medium"|"low",
-  "chinese_summary": "<繁體中文 30-50 字>"
+  "chinese_summary": "<繁體中文 30-50 字>",
+  "impact_assessment": "<繁體中文 30-60 字>"
 }
 
-mention_quotes MUST be verbatim substrings of the article. should_alert=true only if relevance_type is company-specific or sector-policy. Disambiguate TEM=Tempus AI (not Templeton Emerging Markets / TEMPO).
+mention_quotes MUST be verbatim substrings of the article. Disambiguate TEM=Tempus AI (not Templeton Emerging Markets / TEMPO).
 
-chinese_summary：必須描述具體事實（誰、做了什麼、數字、夥伴）。禁用 hedge 語（「屬例行」「影響中性」「值得關注」）。原文若無內文，直接寫「來源僅提供標題，未含內文」，不得編造。"""
+should_alert=true ONLY if (a) relevance_type is company-specific or sector-policy AND (b) the article describes MATERIAL news (earnings, M&A, FDA, lawsuit, exec change, large filing, partnership). Routine governance (annual proxy, regular 10-Q, scheduled IR events, conference attendance) → should_alert=false.
+
+chinese_summary：描述具體事實。禁用 hedge 語。原文若無內文，明說「來源僅提供標題」。
+
+impact_assessment：1 句繁中 30-60 字，明確答「對股價影響為何 + 機制原因」。必須含方向（利多/利空/中性/混合）+ 強度（高/中/低/微）+ 機制。禁用「影響中性」「值得關注」這種廢話。"""
 
 
 _TRANSLATE_SYSTEM = """你是一個嚴謹的翻譯員。把英文標題翻譯成繁體中文。

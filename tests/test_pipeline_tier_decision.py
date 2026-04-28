@@ -40,6 +40,7 @@ def _verdict(
             "should_alert": should_alert,
             "alert_tier": "high",
             "chinese_summary": "test",
+            "impact_assessment": "test impact",
         }
     )
 

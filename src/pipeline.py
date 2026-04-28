@@ -476,6 +476,10 @@ def _critical_path(
         should_alert=True,
         alert_tier="high",
         chinese_summary=chinese_summary,
+        # 8-K critical path is body-less by design; impact_assessment is filled
+        # with a fixed honest fallback rather than asking LLM to opine on a
+        # body it doesn't have access to.
+        impact_assessment="影響待原文確認 — 8-K 重大事件公告，請查 SEC filing 細節",
     )
     return (
         TierDecision(
@@ -559,6 +563,7 @@ def _verdict_details(verdict: Optional[LLMVerdict]) -> dict:
         "sentiment": verdict.sentiment,
         "category": verdict.category,
         "chinese_summary": verdict.chinese_summary,  # capture for QC inspection
+        "impact_assessment": verdict.impact_assessment,
         "ticker_relevance": {
             t: {
                 "is_relevant": r.is_relevant,

@@ -41,10 +41,22 @@ class LLMVerdict(BaseModel):
     should_alert: bool
     alert_tier: AlertTier
     chinese_summary: str
+    # AI's interpretive take: 'why does this matter / not matter for the stock'.
+    # Required because facts-without-analysis was the user's complaint about the
+    # proxy-filing alert — Discord summary listed concrete details but gave no
+    # signal on whether to act. impact_assessment forces the LLM to opine.
+    impact_assessment: str
 
     @field_validator("chinese_summary")
     @classmethod
     def _summary_nonempty(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError("chinese_summary must not be empty")
+        return v.strip()
+
+    @field_validator("impact_assessment")
+    @classmethod
+    def _impact_nonempty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("impact_assessment must not be empty")
         return v.strip()
