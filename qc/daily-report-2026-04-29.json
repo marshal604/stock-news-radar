@@ -1,11 +1,11 @@
 {
   "date": "2026-04-29",
-  "last_updated": "2026-04-29T17:53:00.316902+00:00",
-  "runs_today": 5,
+  "last_updated": "2026-04-29T21:33:54.548228+00:00",
+  "runs_today": 6,
   "counters": {
-    "verdict:DROP": 7984,
-    "body_fetch:summary_only": 7976,
-    "reason:date_too_old": 7957,
+    "verdict:DROP": 9578,
+    "body_fetch:summary_only": 9570,
+    "reason:date_too_old": 9547,
     "llm_call:primary": 11,
     "body_fetch:complete": 9,
     "reason:llm_should_not_alert": 7,
@@ -17,7 +17,7 @@
     "verdict:SENT": 1,
     "tier:MEDIUM": 1,
     "reason:competitor_signal_data_collection": 1,
-    "reason:already_sent": 18,
+    "reason:already_sent": 22,
     "reason:llm_no_relevant_or_buzzword_only": 2,
     "body_fetch:partial": 2
   }
