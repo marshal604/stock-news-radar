@@ -71,20 +71,30 @@ def fetch_article_body(
     if not url or not url.startswith(("http://", "https://")):
         return None, "title_only"
 
-    # Strategy 1+2: local extractors
+    # Strategies 1-3: local extractors in escalating leniency.
+    # Each returns text or None; we accept the FIRST that passes the quality
+    # gates (≥ MIN_BODY_CHARS + no boilerplate + title-phrase relevance). This
+    # fixes a short-circuit bug where trafilatura returning 162 chars (below
+    # MIN_BODY) prevented readability/structural from running and finding the
+    # 6000-char article body in the DOM (Yahoo Finance case).
     html, final_url = _fetch_html(url)
     if html and not _redirect_dropped_slug(url, final_url):
-        text = _extract_trafilatura(html, url) or _extract_readability(html)
-        status = _classify_body(text, title)
-        if status != "title_only":
-            return text[:MAX_BODY_CHARS], status
+        for extractor in (
+            lambda: _extract_trafilatura(html, url),
+            lambda: _extract_readability(html),
+            lambda: _extract_structural(html),
+        ):
+            text = extractor()
+            status = _classify_body(text, title)
+            if status != "title_only":
+                return text[:MAX_BODY_CHARS], status
 
-        # Strategy 3: meta-tag fallback (og:description / twitter:description)
+        # Strategy 4: meta-tag fallback (og:description / twitter:description)
         meta_text = _extract_meta_description(html)
         if meta_text and len(meta_text) >= META_MIN_CHARS:
             return meta_text, "partial"
 
-    # Strategy 4: r.jina.ai server-side renderer (handles MSN-class SPAs)
+    # Strategy 5: r.jina.ai server-side renderer (handles MSN-class SPAs)
     jina_text = _extract_jina(url)
     status = _classify_body(jina_text, title)
     if status != "title_only":
@@ -149,6 +159,40 @@ def _extract_readability(html: str) -> Optional[str]:
     except Exception:
         return None
     return " ".join(text.split()) if text else None
+
+
+_STRUCTURAL_SELECTORS = (
+    'div[data-testid="article-body"]',  # Yahoo (newer markup), some Reuters
+    "div.caas-body",                    # Yahoo Finance article body
+    "div.article-body",                 # generic
+    "div.story-body",                   # BBC, some others
+    "article",                          # HTML5 standard article element
+    "main article",                     # nested fallback
+    "main",                             # last-resort generic
+)
+
+
+def _extract_structural(html: str) -> Optional[str]:
+    """Last-resort local extractor: walk common article containers in DOM order.
+
+    trafilatura and readability use heuristics (text density, link ratio) that
+    can be confused by sites with heavy chrome (Yahoo Finance, financial portals).
+    When those return None or short, this fallback grabs the first <article> /
+    common article-body container that has enough text — works for any site
+    that uses semantic HTML, which is most modern news sites."""
+    try:
+        soup = BeautifulSoup(html, "lxml")
+    except Exception:
+        return None
+    for selector in _STRUCTURAL_SELECTORS:
+        elements = soup.select(selector)
+        if not elements:
+            continue
+        text = elements[0].get_text(separator="\n", strip=True)
+        text = " ".join(text.split())
+        if len(text) >= MIN_BODY_CHARS:
+            return text
+    return None
 
 
 def _extract_meta_description(html: str) -> Optional[str]:
