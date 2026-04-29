@@ -1,0 +1,39 @@
+name: earnings-calendar
+
+on:
+  schedule:
+    # TW 08:07 = UTC 00:07. Offset off the integer hour to avoid GitHub
+    # Actions schedule-skip on personal repos at peak.
+    - cron: "7 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: earnings-calendar
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install minimal deps
+        run: pip install httpx==0.27.2
+
+      - name: Send earnings reminders
+        env:
+          FINNHUB_API_KEY_RAW: ${{ secrets.FINNHUB_API_KEY }}
+          DISCORD_WEBHOOK_URL_RAW: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          export FINNHUB_API_KEY="$(printf '%s' "$FINNHUB_API_KEY_RAW" | tr -d '[:space:]')"
+          export DISCORD_WEBHOOK_URL="$(printf '%s' "$DISCORD_WEBHOOK_URL_RAW" | tr -d '[:space:]')"
+          python -m src.main_calendar

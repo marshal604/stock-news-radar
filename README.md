@@ -37,7 +37,11 @@ Phase 6 Discord post  → 按 tier 路由 + 中文摘要
 3. Repo Settings → Secrets and variables → Actions：
    - `CLAUDE_CODE_OAUTH_TOKEN` = 第一步拿到的 `sk-ant-oat01-...`
    - `DISCORD_WEBHOOK_URL` = Discord 頻道 webhook URL
-4. workflow 自動每 4 小時跑一次（cron `0 */4 * * *`）。
+   - `FINNHUB_API_KEY` = Finnhub free API key（earnings calendar 用，[finnhub.io](https://finnhub.io) 免費註冊）
+4. Workflows：
+   - `poll.yml` — 新聞 radar，每 4 小時跑（cron `17 */4 * * *`）
+   - `earnings-calendar.yml` — 財報日曆提醒，每天 TW 08:07（cron `7 0 * * *`）
+   - `test-discord.yml` — 手動觸發，webhook smoke test
 
 ## 本機 debug
 
