@@ -26,8 +26,11 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install minimal deps
-        run: pip install httpx==0.27.2
+      - name: Install deps
+        # discord.py transitively imports oracles → pydantic, so we need the
+        # full requirements set even though earnings_calendar itself only uses
+        # httpx. Pip cache from setup-python keeps this fast.
+        run: pip install -r requirements.txt
 
       - name: Send earnings reminders
         env:
