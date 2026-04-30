@@ -1,11 +1,11 @@
 {
   "date": "2026-04-30",
-  "last_updated": "2026-04-30T10:20:56.824080+00:00",
-  "runs_today": 3,
+  "last_updated": "2026-04-30T14:26:53.099134+00:00",
+  "runs_today": 4,
   "counters": {
-    "verdict:DROP": 4783,
-    "body_fetch:summary_only": 4787,
-    "reason:date_too_old": 4766,
+    "verdict:DROP": 6377,
+    "body_fetch:summary_only": 6381,
+    "reason:date_too_old": 6357,
     "llm_call:primary": 7,
     "body_fetch:complete": 4,
     "reason:llm_should_not_alert": 1,
@@ -18,6 +18,6 @@
     "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr='' stdout=\"You've hit your limit · resets 4:40am (UTC)\\n\"": 5,
     "body_fetch:title_only": 1,
     "reason:competitor_signal_data_collection": 5,
-    "reason:already_sent": 16
+    "reason:already_sent": 19
   }
 }
