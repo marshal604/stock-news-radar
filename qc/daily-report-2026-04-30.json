@@ -1,0 +1,22 @@
+{
+  "date": "2026-04-30",
+  "last_updated": "2026-04-30T04:08:47.178594+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1589,
+    "body_fetch:summary_only": 1593,
+    "reason:date_too_old": 1588,
+    "llm_call:primary": 7,
+    "body_fetch:complete": 4,
+    "reason:llm_should_not_alert": 1,
+    "reason:schema_gap_suspicious_veto": 1,
+    "llm_call:auditor": 1,
+    "verdict:REVIEW": 11,
+    "body_fetch:partial": 2,
+    "tier:REVIEW": 11,
+    "reason:self_consistency_inconclusive:LLM classification failed after 3 attempts: claude CLI exit=1 stderr='' stdout=\"You've hit your limit · resets 4:40am (UTC)\\n\"": 1,
+    "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr='' stdout=\"You've hit your limit · resets 4:40am (UTC)\\n\"": 5,
+    "body_fetch:title_only": 1,
+    "reason:competitor_signal_data_collection": 5
+  }
+}
