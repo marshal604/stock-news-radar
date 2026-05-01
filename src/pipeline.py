@@ -27,6 +27,10 @@ from .oracles import (
     translate_title_to_chinese,
     verify_quotes,
 )
+from .oracles.date_extract import (
+    DateCandidate,
+    extract_date_candidates,
+)
 from .oracles.keyword import KeywordScore
 from .oracles.llm import numeric_guardrail_pass
 from .oracles.substring import SubstringResult
@@ -79,6 +83,12 @@ class TierDecision:
     reasons: List[str] = field(default_factory=list)
     primary_ticker: Optional[str] = None
     summary_caveat: bool = False
+    # Resolved event date (ISO 'YYYY-MM-DD') — set by _process_item AFTER
+    # bounds-validating the LLM-selected event_date_index against the
+    # Python-extracted DateCandidate list. None when no event date was claimed,
+    # candidates list was empty, or LLM index was out of bounds. Carried on
+    # the decision so format_alert can render the temporal tag downstream.
+    event_date_iso: Optional[str] = None
 
 
 def build_sources(sources_config: dict) -> List[Source]:
@@ -344,6 +354,16 @@ def _process_item(
     # LLM-quoted phrases from the body actually substring-match.
     item, enriched_text = _enrich_with_body(item)
 
+    # Harness: Python regex extracts ALL plausible date candidates from the
+    # enriched text. LLM only picks the EVENT date by index — never extracts
+    # date strings free-form (LLM is bad at precision; can hallucinate dates).
+    # Same candidate list is passed to both primary AND auditor LLM so
+    # self-consistency check remains valid.
+    date_candidates = extract_date_candidates(
+        enriched_text,
+        reference_year=item.published_at.year,
+    )
+
     # Path B: LLM classifier (Opus)
     qc.record_llm_call("primary")
     try:
@@ -355,6 +375,7 @@ def _process_item(
             published=item.published_at.isoformat(),
             source=item.source,
             publisher=item.publisher,
+            date_candidates=date_candidates,
         )
     except LLMOracleError as e:
         logger.warning("LLM classify failed for %s: %s", item.url, e)
@@ -387,11 +408,51 @@ def _process_item(
             reasons=decision.reasons + ["classifier_numeric_hallucination"],
         )
 
+    # Resolve LLM-picked event_date_index to an ISO date string. Bounds-check
+    # is the harness's deterministic verification — if LLM emits an
+    # out-of-range index (or a candidates-empty case with non-null index),
+    # log + drop the field rather than tag a phantom date. fail loud.
+    decision = dataclasses.replace(
+        decision,
+        event_date_iso=_resolve_event_date(
+            primary_verdict.event_date_index, date_candidates, item.url, qc
+        ),
+    )
+
     # Phase 5: Self-consistency on HIGH and MEDIUM
     if decision.tier in ("HIGH", "MEDIUM"):
-        decision = _apply_self_consistency(item, target_tickers, primary_verdict, decision, qc)
+        decision = _apply_self_consistency(
+            item, target_tickers, primary_verdict, decision, qc, date_candidates
+        )
 
     return decision, primary_verdict, item
+
+
+def _resolve_event_date(
+    index: Optional[int],
+    candidates: List[DateCandidate],
+    url: str,
+    qc: QCLogger,
+) -> Optional[str]:
+    """Validate LLM-emitted index against Python-extracted candidates."""
+    if index is None:
+        return None
+    if not candidates:
+        # LLM hallucinated an index when no candidates were offered.
+        qc.record_anomaly("event_date_index_with_empty_candidates")
+        logger.warning(
+            "event_date_index=%d but no candidates extracted for %s — dropping",
+            index, url,
+        )
+        return None
+    if not (0 <= index < len(candidates)):
+        qc.record_anomaly("event_date_index_out_of_bounds")
+        logger.warning(
+            "event_date_index=%d out of range [0,%d) for %s — dropping",
+            index, len(candidates), url,
+        )
+        return None
+    return candidates[index].iso_date
 
 
 def decide_tier(
@@ -486,6 +547,7 @@ def _apply_self_consistency(
     primary_verdict: LLMVerdict,
     decision: TierDecision,
     qc: QCLogger,
+    date_candidates: List[DateCandidate],
 ) -> TierDecision:
     qc.record_llm_call("auditor")
     try:
@@ -497,6 +559,7 @@ def _apply_self_consistency(
             published=item.published_at.isoformat(),
             source=item.source,
             publisher=item.publisher,
+            date_candidates=date_candidates,
             use_auditor_phrasing=True,
         )
     except LLMOracleError as e:
@@ -675,6 +738,7 @@ def _send(
         verdict=verdict,
         primary_ticker=decision.primary_ticker,
         summary_caveat=decision.summary_caveat,
+        event_date_iso=decision.event_date_iso,
     )
     if config.dry_run:
         logger.info("[DRY RUN] would post:\n%s\n", content)

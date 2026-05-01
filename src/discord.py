@@ -11,6 +11,7 @@ from typing import Optional
 import httpx
 
 from .oracles import LLMVerdict
+from .oracles.date_extract import classify_temporal, event_lag_days
 from .sources import NewsItem
 
 logger = logging.getLogger(__name__)
@@ -108,6 +109,7 @@ def format_alert(
     verdict: LLMVerdict,
     primary_ticker: str,
     summary_caveat: bool = False,
+    event_date_iso: Optional[str] = None,
 ) -> str:
     """Render a Discord message for a single alert.
 
@@ -118,11 +120,24 @@ def format_alert(
          unfetchable (paywall/JS/redirect-loss) — prepend '⚠️ [僅依標題判斷]'
          so user knows to click for real context.
       3. `item.body_fetch_status == 'partial'` (T1): only got short body or
-         meta-tag fallback — prepend '📋 [依摘要 meta 描述]'."""
+         meta-tag fallback — prepend '📋 [依摘要 meta 描述]'.
+
+    Plus temporal tag (when `event_date_iso` is set): prepends '📅 [回顧 N 天前]'
+    or '📅 [陳舊 N 天前]' so the user knows the article describes a past event
+    rather than breaking news. Pure deterministic — pipeline supplies the
+    LLM-validated event date; this function just classifies + renders."""
     tier_emoji = _TIER_EMOJI.get(tier, "🟢")
     sentiment_label = _SENTIMENT_LABEL.get(verdict.sentiment, verdict.sentiment)
     sentiment_emoji = _SENTIMENT_EMOJI.get(verdict.sentiment, "")
     published_str = item.published_at.strftime("%Y-%m-%d %H:%M UTC")
+
+    title_display = item.title
+    if event_date_iso:
+        temporal = classify_temporal(event_date_iso, item.published_at.isoformat())
+        if temporal in ("retrospective", "stale"):
+            lag = event_lag_days(event_date_iso, item.published_at.isoformat())
+            tag = "陳舊" if temporal == "stale" else "回顧"
+            title_display = f"📅 [{tag} {lag} 天前事件 · {event_date_iso}] {item.title}"
 
     if summary_caveat:
         summary_line = f"⚠️ [摘要待確認 — LLM 引用幻覺，請查原文] {item.title}"
@@ -135,7 +150,7 @@ def format_alert(
 
     lines = [
         f"{tier_emoji} **[{tier}] ${primary_ticker}** · {sentiment_emoji} {sentiment_label} · `{verdict.category}`",
-        f"**{item.title}**",
+        f"**{title_display}**",
         summary_line,
         f"🎯 {verdict.impact_assessment}",
         f"📰 {item.publisher or item.source} · {published_str}",
