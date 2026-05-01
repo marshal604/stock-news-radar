@@ -13,7 +13,7 @@
 | **HIGH→MEDIUM 降級** | 上述但 self-consistency 不一致（`should_alert` 或 `is_relevant` 不一致） | 🟡 仍發 channel；reasons 含 `self_consistency_mismatch` |
 | **MEDIUM** | source_confidence=`medium`（google_news）AND keyword pass AND LLM pass AND substring ok AND self-consistency 一致 | 🟡 + 中文摘要 |
 | **MEDIUM→REVIEW 降級** | 上述但 self-consistency 不一致 | 不發；reasons 含 `self_consistency_mismatch` |
-| **REVIEW (silent)** | differential disagreement / partial substring failure / self-consistency inconclusive | 不發；寫進 daily-report 計數 |
+| **REVIEW (silent)** | differential disagreement / partial substring failure / self-consistency inconclusive / `body_fetch_status==title_only` (universal gate) / Google News aggregator publisher | 不發；寫進 daily-report 計數 |
 | **DROP (silent)** | hard gate（collision / exclude / total substring failure / LLM 說 don't alert） | 不發；寫 processed-log.ndjson |
 
 ## 為什麼 HIGH 不一致 → MEDIUM、MEDIUM 不一致 → REVIEW（不對稱降級）
@@ -44,6 +44,8 @@
 | `exclude_strict_hit` | MAJOR | DROP | `_process_item` exclude gate |
 | `differential_disagreement_kw_no_llm_yes` (HIGH source) | MAJOR | REVIEW | `decide_tier` |
 | `medium_source_no_keyword_match` | MAJOR | REVIEW | `decide_tier` |
+| `title_only_no_body_for_analysis` (universal gate — body fetch yielded no usable text) | MAJOR | REVIEW（不發；避免「僅依標題判斷」型雜訊 alert） | `decide_tier` |
+| `aggregator_publisher:<name>` (MSN/Yahoo/AOL/247WallSt re-syndication) | MAJOR | REVIEW（fast-path，跳過 body fetch） | `_process_item` |
 | `self_consistency_mismatch` (HIGH source) | MAJOR | 降到 MEDIUM 仍發 | `_apply_self_consistency` |
 | `self_consistency_mismatch` (MEDIUM source) | MAJOR | 降到 REVIEW 不發 | `_apply_self_consistency` |
 | `self_consistency_inconclusive` (auditor LLM 失敗) | MAJOR | REVIEW（auditor 失敗本身是訊號，不能吞） | `_apply_self_consistency` B2 |

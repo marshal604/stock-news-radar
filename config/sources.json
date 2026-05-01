@@ -29,7 +29,24 @@
     "confidence": "medium",
     "ticker_specific": false,
     "url_template": "https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en",
-    "notes": "Topic/keyword-driven. Used for non-ticker-specific signal (FDA news, DOE policy, uranium market). Lowest precision; relies hardest on LLM oracle."
+    "notes": "Topic/keyword-driven. Used for non-ticker-specific signal (FDA news, DOE policy, uranium market). Lowest precision; relies hardest on LLM oracle. Items from aggregator publishers (MSN, Yahoo Finance) are routed to REVIEW by pipeline._is_aggregator — re-syndication timestamps are unreliable and SPA pages defeat body extraction."
+  },
+  "pr_newswire": {
+    "type": "rss",
+    "confidence": "high",
+    "ticker_specific": true,
+    "enabled": true,
+    "url_template": "https://news.google.com/rss/search?q=({company_aliases}) (site:globenewswire.com OR site:prnewswire.com OR site:businesswire.com)&hl=en-US&gl=US&ceid=US:en",
+    "notes": "First-party press-release wires (GlobeNewswire / PR Newswire / Business Wire) reached via Google News with site: filter. Full-text-friendly: every URL points to a primary source the body fetcher can reliably extract. Per-ticker queries derived from tickers.json company_aliases automatically."
+  },
+  "finnhub_news": {
+    "type": "rest_api",
+    "confidence": "high",
+    "ticker_specific": true,
+    "enabled": true,
+    "url_template": "https://finnhub.io/api/v1/company-news?symbol={ticker}&from={from}&to={to}",
+    "auth": "FINNHUB_API_KEY env var (shared with earnings_calendar)",
+    "notes": "Ticker-bound JSON API; returns {headline, summary, url, datetime, source}. The summary field (~200-500 chars) is enough LLM context to skip the article-body scrape battle. Free tier: 60 calls/min, US tickers only. Skipped if FINNHUB_API_KEY not set."
   },
   "google_news_queries": {
     "UUUU": [

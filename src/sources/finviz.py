@@ -13,6 +13,7 @@ from .base import NewsItem, Source
 logger = logging.getLogger(__name__)
 
 URL_TEMPLATE = "https://finviz.com/quote.ashx?t={ticker}&p=d"
+FINVIZ_BASE = "https://finviz.com"
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
@@ -61,6 +62,15 @@ class FinvizSource(Source):
             href = (link_tag.get("href") or "").strip()
             if not title or not href:
                 continue
+            # Finviz now serves news as relative paths (/news/<id>/<slug>).
+            # The article body fetcher rejects non-absolute URLs, so promote
+            # to https://finviz.com/<path>. The /news/ page renders the full
+            # article body (re-syndicated from PR Newswire / Business Wire /
+            # GlobeNewswire) which trafilatura extracts cleanly. We don't try
+            # to follow to the original publisher URL — the finviz page is
+            # already a working full-body source.
+            if href.startswith("/"):
+                href = FINVIZ_BASE + href
 
             publisher_tag = cells[1].find("span")
             publisher = publisher_tag.get_text(strip=True).strip("()") if publisher_tag else None

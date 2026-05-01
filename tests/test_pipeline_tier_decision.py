@@ -133,6 +133,47 @@ def test_review_partial_quote_failure(): # B5
     assert "partial_quote_failure" in d.reasons
 
 
+# ── Universal title-only gate ────────────────────────────────────────────
+
+
+def test_review_when_high_source_body_title_only():
+    """Per user spec: title-only items create anxiety not signal — never alert."""
+    d = decide_tier(
+        source_confidence="high",
+        primary_verdict=_verdict("UUUU"),
+        keyword_results={"UUUU": _kw("UUUU", True)},
+        substring_result=_sub(),
+        body_fetch_status="title_only",
+    )
+    assert d.tier == "REVIEW"
+    assert "title_only_no_body_for_analysis" in d.reasons
+
+
+def test_review_when_medium_source_body_title_only():
+    """Same gate applies to medium-confidence sources (Google News etc.)."""
+    d = decide_tier(
+        source_confidence="medium",
+        primary_verdict=_verdict("TEM"),
+        keyword_results={"TEM": _kw("TEM", True)},
+        substring_result=_sub(),
+        body_fetch_status="title_only",
+    )
+    assert d.tier == "REVIEW"
+    assert "title_only_no_body_for_analysis" in d.reasons
+
+
+def test_high_tier_still_fires_on_partial_body():
+    """Finnhub-style 'partial' (summary in raw_text) is enough context to alert."""
+    d = decide_tier(
+        source_confidence="high",
+        primary_verdict=_verdict("UUUU"),
+        keyword_results={"UUUU": _kw("UUUU", True)},
+        substring_result=_sub(),
+        body_fetch_status="partial",
+    )
+    assert d.tier == "HIGH"
+
+
 # ── DROP paths ───────────────────────────────────────────────────────────
 
 

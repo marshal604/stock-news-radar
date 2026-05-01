@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -33,9 +34,11 @@ from .qc import QCLogger
 from .sources import (
     CompetitorFinvizSource,
     EdgarSource,
+    FinnhubNewsSource,
     FinvizSource,
     GoogleNewsSource,
     NewsItem,
+    PRWireSource,
     Source,
 )
 from .sources.google_news import decode_google_news_url
@@ -88,10 +91,40 @@ def build_sources(sources_config: dict) -> List[Source]:
         active.append(finviz)
     if sources_config.get("competitor_finviz", {}).get("enabled", False) is True:
         active.append(CompetitorFinvizSource(finviz=finviz))
+    if sources_config.get("pr_newswire", {}).get("enabled", True) is not False:
+        active.append(PRWireSource())
+    if sources_config.get("finnhub_news", {}).get("enabled", True) is not False:
+        api_key = os.getenv("FINNHUB_API_KEY", "").strip()
+        if api_key:
+            active.append(FinnhubNewsSource(api_key=api_key))
+        else:
+            logger.warning("finnhub_news enabled but FINNHUB_API_KEY not set — skipping")
     if sources_config.get("google_news", {}).get("enabled", True) is not False:
         queries = sources_config.get("google_news_queries", {})
         active.append(GoogleNewsSource(queries_by_ticker=queries))
     return active
+
+
+# Aggregator publishers that re-syndicate other publishers' content with a
+# refreshed pubDate. Articles from these on Google News are routed to REVIEW
+# regardless of LLM verdict — the timestamp is unreliable (often weeks-old
+# content with a fresh-looking date) and the SPA pages defeat body extraction.
+# Keys are substring matches against publisher name OR URL host (case-insensitive).
+_AGGREGATOR_DENYLIST = (
+    "msn.com",
+    "msn",
+    "yahoo finance",
+    "finance.yahoo.com",
+    "news.yahoo.com",
+    "aol.com",
+    "247wallst.com",
+    "24/7 wall st",
+)
+
+
+def _is_aggregator(item: NewsItem) -> bool:
+    haystack = f"{item.publisher or ''} {item.url}".lower()
+    return any(needle in haystack for needle in _AGGREGATOR_DENYLIST)
 
 
 def run(config: PipelineConfig) -> dict:
@@ -174,7 +207,12 @@ def run(config: PipelineConfig) -> dict:
             # Discord display, mark_seen url_hash). Doing this inside
             # _process_item only rebinds a local — the outer loop's `item`
             # reference would stay as the redirect URL, leaking into _send.
-            if item.source == "google_news" and "news.google.com" in item.url:
+            # Same applies to pr_newswire which also uses news.google.com
+            # as transport (with site: filter for newswire publishers).
+            if (
+                item.source in ("google_news", "pr_newswire")
+                and "news.google.com" in item.url
+            ):
                 resolved = decode_google_news_url(item.url)
                 if resolved != item.url:
                     item = dataclasses.replace(item, url=resolved)
@@ -206,7 +244,18 @@ def run(config: PipelineConfig) -> dict:
             # Discord failures leave the item un-marked so the next run retries.
             # B1: dry_run never marks — re-runs are reproducible.
             if handled and not config.dry_run:
-                store.mark_seen(item)
+                # Items demoted to REVIEW *because* we couldn't analyze them
+                # (no body, or known aggregator publisher) must not block a
+                # subsequent body-rich version of the same story by title hash.
+                # Use the no-title-dedup sentinel so url_hash still prevents
+                # re-LLM'ing the same URL but a different URL with the same
+                # title can fall through to alert.
+                unanalyzable_review = decision.tier == "REVIEW" and any(
+                    r == "title_only_no_body_for_analysis"
+                    or r.startswith("aggregator_publisher:")
+                    for r in decision.reasons
+                )
+                store.mark_seen(item, dedup_by_title=not unanalyzable_review)
 
         # Daily housekeeping (only on real runs)
         if not config.dry_run:
@@ -243,6 +292,23 @@ def _process_item(
                 tier="REVIEW",
                 reasons=["competitor_signal_data_collection"],
                 primary_ticker=item.ticker_hint,
+            ),
+            None,
+            item,
+        )
+
+    # Google News aggregator gate: MSN / Yahoo SPA entries have unreliable
+    # timestamps (re-syndication date, not original) and routinely defeat the
+    # article body fetcher. Route to REVIEW so we still capture the signal in
+    # processed-log without firing a Discord alert based on a stale headline.
+    # pr_newswire / finnhub_news come through other code paths and are NOT
+    # subject to this gate.
+    if item.source == "google_news" and _is_aggregator(item):
+        return (
+            TierDecision(
+                tier="REVIEW",
+                reasons=[f"aggregator_publisher:{(item.publisher or 'unknown')[:60]}"],
+                primary_ticker=target_tickers[0],
             ),
             None,
             item,
@@ -338,10 +404,14 @@ def decide_tier(
 ) -> TierDecision:
     """Pure function: oracle outputs → tier verdict per alert-rules.md.
 
-    body_fetch_status caps the tier when LLM had insufficient context
-    (title_only). Title-only HIGH-source items demote to MEDIUM with reason
-    'body_fetch_title_only' — explicit signal to user via Discord annotation
-    that they should click through for full context."""
+    Universal title-only gate: if body_fetch_status == 'title_only', the LLM
+    judged the item from the headline alone. Per user spec ('我想看確實可以
+    被分析的資料就好，只有標題檔，我覺得只是製造焦慮'), such items go to
+    REVIEW — captured in processed-log for backup, but never push a Discord
+    alert. EDGAR 8-K filings bypass this function entirely via
+    _critical_path; finnhub_news ships summary in raw_text and tags 'partial'
+    upfront so the source-context guard in _enrich_with_body keeps it out of
+    title_only state."""
     relevant = [
         t for t, rel in primary_verdict.ticker_relevance.items()
         if rel.is_relevant and rel.relevance_type != "buzzword-list-only"
@@ -375,18 +445,20 @@ def decide_tier(
             primary_ticker=primary_ticker,
         )
 
+    # Universal title-only gate — applies to every source. No body content
+    # means LLM can't assess sentiment / impact reliably; demote to REVIEW
+    # rather than fire a noise alert with '⚠️ 僅依標題判斷'.
+    if body_fetch_status == "title_only":
+        return TierDecision(
+            tier="REVIEW",
+            reasons=["title_only_no_body_for_analysis"],
+            primary_ticker=primary_ticker,
+        )
+
     kw_pass = any(keyword_results[t].passed for t in relevant if t in keyword_results)
 
     if source_confidence == "high":
         if kw_pass:
-            # T1: title-only body cap — HIGH signals without article body
-            # demote to MEDIUM so the user knows to click for context.
-            if body_fetch_status == "title_only":
-                return TierDecision(
-                    tier="MEDIUM",
-                    reasons=["body_fetch_title_only"],
-                    primary_ticker=primary_ticker,
-                )
             return TierDecision(tier="HIGH", reasons=[], primary_ticker=primary_ticker)
         return TierDecision(
             tier="REVIEW",
@@ -522,8 +594,15 @@ def _enrich_with_body(item: NewsItem) -> Tuple[NewsItem, str]:
     Always returns a NewsItem with a definitive body_fetch_status (complete /
     partial / title_only) — never leaves it at the constructor 'summary_only'
     default once we've run extraction. decide_tier and format_alert downstream
-    use status to apply tier caps and Discord annotations."""
+    use status to apply tier caps and Discord annotations.
+
+    Source-provided context guard: if the source already shipped body context
+    (e.g. finnhub_news ships a 200-500 char summary in raw_text and tags
+    'partial' upfront), don't downgrade to title_only just because the URL
+    fetcher couldn't extract more. The LLM still has actionable context."""
     body, status = fetch_article_body(item.url, title=item.title)
+    if status == "title_only" and item.body_fetch_status in ("partial", "complete"):
+        status = item.body_fetch_status
     item = dataclasses.replace(item, body_fetch_status=status)
     if not body:
         return item, item.raw_text

@@ -75,9 +75,11 @@ jobs:
           # whitespace defensively so the value can't break HTTP auth headers.
           CLAUDE_CODE_OAUTH_TOKEN_RAW: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           DISCORD_WEBHOOK_URL_RAW: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          FINNHUB_API_KEY_RAW: ${{ secrets.FINNHUB_API_KEY }}
         run: |
           export CLAUDE_CODE_OAUTH_TOKEN="$(printf '%s' "$CLAUDE_CODE_OAUTH_TOKEN_RAW" | tr -d '[:space:]')"
           export DISCORD_WEBHOOK_URL="$(printf '%s' "$DISCORD_WEBHOOK_URL_RAW" | tr -d '[:space:]')"
+          export FINNHUB_API_KEY="$(printf '%s' "$FINNHUB_API_KEY_RAW" | tr -d '[:space:]')"
           python -m src.main
 
       - name: Commit daily report back to repo
