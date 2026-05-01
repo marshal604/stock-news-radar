@@ -87,7 +87,9 @@ def test_breaking_same_day_no_tag():
     assert "陳舊" not in msg
 
 
-def test_recent_2days_no_tag():
+def test_2days_is_tagged_per_user_spec():
+    """Per user '只要不是當天就是冷飯': 2-day-old event still tags retrospective.
+    The MarketBeat TEM Form 4 (2-day filing window) is the canonical case."""
     msg = format_alert(
         tier="MEDIUM",
         item=_item(),
@@ -95,8 +97,18 @@ def test_recent_2days_no_tag():
         primary_ticker="TEM",
         event_date_iso="2026-04-28",
     )
-    assert "回顧" not in msg
-    assert "陳舊" not in msg
+    assert "📅 [回顧 2 天前事件 · 2026-04-28]" in msg
+
+
+def test_1day_is_tagged():
+    msg = format_alert(
+        tier="MEDIUM",
+        item=_item(),
+        verdict=_verdict(),
+        primary_ticker="TEM",
+        event_date_iso="2026-04-29",
+    )
+    assert "📅 [回顧 1 天前事件 · 2026-04-29]" in msg
 
 
 def test_retrospective_7days_tagged():

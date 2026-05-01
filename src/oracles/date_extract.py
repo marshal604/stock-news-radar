@@ -171,15 +171,15 @@ def _safe_candidate(
 
 # ── Temporal classification (Layer 3 of harness — pure deterministic) ──
 
-# Boundaries (days, inclusive lower, exclusive upper). Tuned for swing-trading
-# news cadence: same-day = breaking; 1-2 days = recent (still actionable); 3-14
-# days = retrospective (worth flagging as "old news"); >14 = stale. Calibrate
-# after 1 week of production data per cheatsheet rule 6.
+# Boundaries (days, inclusive). Per user spec "只要不是當天就是冷飯":
+# only same-day events count as breaking. Anything else = retrospective up
+# to 14 days, stale beyond. Even 1-2 day lags get tagged because the user
+# wants visibility on every non-realtime alert (Form 4 filing windows, Q1
+# results referencing earlier earnings, etc.).
 _BREAKING_MAX = 0
-_RECENT_MAX = 2
 _RETRO_MAX = 14
 
-TemporalClass = str  # "breaking" | "recent" | "retrospective" | "stale" | "future"
+TemporalClass = str  # "breaking" | "retrospective" | "stale" | "future"
 
 
 def classify_temporal(event_date_iso: str, publish_date_iso: str) -> TemporalClass:
@@ -197,8 +197,6 @@ def classify_temporal(event_date_iso: str, publish_date_iso: str) -> TemporalCla
         return "future"
     if lag <= _BREAKING_MAX:
         return "breaking"
-    if lag <= _RECENT_MAX:
-        return "recent"
     if lag <= _RETRO_MAX:
         return "retrospective"
     return "stale"

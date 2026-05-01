@@ -108,11 +108,18 @@ def test_post_init_rejects_bad_iso():
 
 
 def test_classify_temporal_breaking_same_day():
+    """Per user spec: only same-day = breaking. Anything else = 冷飯."""
     assert classify_temporal("2026-04-30", "2026-04-30T15:00:00Z") == "breaking"
 
 
-def test_classify_temporal_recent_2days():
-    assert classify_temporal("2026-04-28", "2026-04-30T15:00:00Z") == "recent"
+def test_classify_temporal_1day_is_retrospective():
+    """1 day = 冷飯 per user spec (no 'recent' bucket anymore)."""
+    assert classify_temporal("2026-04-29", "2026-04-30T15:00:00Z") == "retrospective"
+
+
+def test_classify_temporal_2days_is_retrospective():
+    """The MarketBeat TEM Form 4 case: 2-day filing window = still 冷飯."""
+    assert classify_temporal("2026-04-28", "2026-04-30T15:00:00Z") == "retrospective"
 
 
 def test_classify_temporal_retrospective_7days():
