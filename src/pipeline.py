@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -33,9 +34,11 @@ from .qc import QCLogger
 from .sources import (
     CompetitorFinvizSource,
     EdgarSource,
+    FinnhubNewsSource,
     FinvizSource,
     GoogleNewsSource,
     NewsItem,
+    PRWireSource,
     Source,
 )
 from .sources.google_news import decode_google_news_url
@@ -88,10 +91,40 @@ def build_sources(sources_config: dict) -> List[Source]:
         active.append(finviz)
     if sources_config.get("competitor_finviz", {}).get("enabled", False) is True:
         active.append(CompetitorFinvizSource(finviz=finviz))
+    if sources_config.get("pr_newswire", {}).get("enabled", True) is not False:
+        active.append(PRWireSource())
+    if sources_config.get("finnhub_news", {}).get("enabled", True) is not False:
+        api_key = os.getenv("FINNHUB_API_KEY", "").strip()
+        if api_key:
+            active.append(FinnhubNewsSource(api_key=api_key))
+        else:
+            logger.warning("finnhub_news enabled but FINNHUB_API_KEY not set — skipping")
     if sources_config.get("google_news", {}).get("enabled", True) is not False:
         queries = sources_config.get("google_news_queries", {})
         active.append(GoogleNewsSource(queries_by_ticker=queries))
     return active
+
+
+# Aggregator publishers that re-syndicate other publishers' content with a
+# refreshed pubDate. Articles from these on Google News are routed to REVIEW
+# regardless of LLM verdict — the timestamp is unreliable (often weeks-old
+# content with a fresh-looking date) and the SPA pages defeat body extraction.
+# Keys are substring matches against publisher name OR URL host (case-insensitive).
+_AGGREGATOR_DENYLIST = (
+    "msn.com",
+    "msn",
+    "yahoo finance",
+    "finance.yahoo.com",
+    "news.yahoo.com",
+    "aol.com",
+    "247wallst.com",
+    "24/7 wall st",
+)
+
+
+def _is_aggregator(item: NewsItem) -> bool:
+    haystack = f"{item.publisher or ''} {item.url}".lower()
+    return any(needle in haystack for needle in _AGGREGATOR_DENYLIST)
 
 
 def run(config: PipelineConfig) -> dict:
@@ -174,7 +207,12 @@ def run(config: PipelineConfig) -> dict:
             # Discord display, mark_seen url_hash). Doing this inside
             # _process_item only rebinds a local — the outer loop's `item`
             # reference would stay as the redirect URL, leaking into _send.
-            if item.source == "google_news" and "news.google.com" in item.url:
+            # Same applies to pr_newswire which also uses news.google.com
+            # as transport (with site: filter for newswire publishers).
+            if (
+                item.source in ("google_news", "pr_newswire")
+                and "news.google.com" in item.url
+            ):
                 resolved = decode_google_news_url(item.url)
                 if resolved != item.url:
                     item = dataclasses.replace(item, url=resolved)
@@ -243,6 +281,23 @@ def _process_item(
                 tier="REVIEW",
                 reasons=["competitor_signal_data_collection"],
                 primary_ticker=item.ticker_hint,
+            ),
+            None,
+            item,
+        )
+
+    # Google News aggregator gate: MSN / Yahoo SPA entries have unreliable
+    # timestamps (re-syndication date, not original) and routinely defeat the
+    # article body fetcher. Route to REVIEW so we still capture the signal in
+    # processed-log without firing a Discord alert based on a stale headline.
+    # pr_newswire / finnhub_news come through other code paths and are NOT
+    # subject to this gate.
+    if item.source == "google_news" and _is_aggregator(item):
+        return (
+            TierDecision(
+                tier="REVIEW",
+                reasons=[f"aggregator_publisher:{(item.publisher or 'unknown')[:60]}"],
+                primary_ticker=target_tickers[0],
             ),
             None,
             item,
@@ -522,8 +577,15 @@ def _enrich_with_body(item: NewsItem) -> Tuple[NewsItem, str]:
     Always returns a NewsItem with a definitive body_fetch_status (complete /
     partial / title_only) — never leaves it at the constructor 'summary_only'
     default once we've run extraction. decide_tier and format_alert downstream
-    use status to apply tier caps and Discord annotations."""
+    use status to apply tier caps and Discord annotations.
+
+    Source-provided context guard: if the source already shipped body context
+    (e.g. finnhub_news ships a 200-500 char summary in raw_text and tags
+    'partial' upfront), don't downgrade to title_only just because the URL
+    fetcher couldn't extract more. The LLM still has actionable context."""
     body, status = fetch_article_body(item.url, title=item.title)
+    if status == "title_only" and item.body_fetch_status in ("partial", "complete"):
+        status = item.body_fetch_status
     item = dataclasses.replace(item, body_fetch_status=status)
     if not body:
         return item, item.raw_text
