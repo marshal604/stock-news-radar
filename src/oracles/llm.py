@@ -13,6 +13,7 @@ from typing import Optional
 
 from pydantic import ValidationError
 
+from .date_extract import DateCandidate
 from .schema import LLMVerdict
 
 logger = logging.getLogger(__name__)
@@ -61,8 +62,8 @@ CRITICAL RULES:
 5. Ticker disambiguation: TEM = Tempus AI on NASDAQ. If article refers to "Templeton Emerging Markets" or "TEMPO Automation" or other TEM-named entities, set is_relevant=false for TEM.
 6. Ticker disambiguation: UUUU = Energy Fuels on NYSE. Almost no collisions.
 7b. impact_assessment 規則（這個欄位讓用戶理解「為什麼」）：
-   a. 1 句繁體中文，30-60 字，明確回答「這對股價影響為何 + 原因」
-   b. 必須給方向（利多/利空/中性/混合）+ 強度（高/中/低/微）+ 一個機制原因
+   a. 繁體中文，最多 200 字，明確回答「這對股價影響為何 + 原因」。可一句也可多句；說清楚比湊字數重要
+   b. 必須給方向（利多/利空/中性/混合）+ 強度（高/中/低/微）+ 至少一個機制原因
    c. 範例好/壞：
      好：「利多中度 — Tempus 與默克 5 種癌症藥物開發合作，預期 H2 開始貢獻 milestone payments」
      好：「中性低 — 例行年度委託書，無併購或薪酬重大調整議案，僅董事連任」
@@ -78,13 +79,23 @@ CRITICAL RULES:
    c. 禁止含糊評論：不准寫「影響中性」「值得關注」「有待觀察」「對股價影響有限」「需持續追蹤」
    d. 影響方向（如有）放句尾，不能取代具體內容
    e. 原文若真的只有標題沒內文（如純 RSS link、interstitial）→ 明說「來源僅提供標題，未含內文」── 絕不編造或用通用語掩蓋
-   f. 30-50 字繁體中文一句話
+   f. 繁體中文，最多 200 字。可一句也可多句；事實密度比字數限制更重要
    範例對比：
      壞：「公司提交財報文件，屬例行揭露，影響中性」
      好：「公司公布 Q1 營收 $35M 超預期 12%，鈾與稀土產量雙雙增長」
      壞：「Tempus AI 公佈委託書摘要，屬例行公司治理揭露，影響中性」
      好：「Tempus AI 委託書揭露董事會改組與高管薪酬調整，含股東投票議案」
      可：「來源僅提供 Tempus AI 委託書摘要連結，未含內文細節」
+
+8. event_date_index — 從文末 DATE CANDIDATES 清單裡選 EVENT 發生日：
+   a. EVENT = 真正動作發生那天（交易日、簽約日、藥物 approval 日、CEO 異動生效日）
+   b. NOT EVENT = filing/announcement/publication 日期（除非是規範文件本身就是事件，如 8-K）
+   c. 例：Form 4 內部人交易，transaction date = EVENT，filing date ≠ EVENT
+   d. 例：FDA approval 公告，approval date = EVENT，press release date ≠ EVENT
+   e. 例：每季財報公佈，財報期末日（quarter end）= EVENT，公布日 ≠ EVENT
+   f. 不確定 / 無清晰 event date / candidates 全是 publication 相關 → null
+   g. 候選清單空 → 必為 null
+   h. 只回 INDEX 數字（從 0 開始），或 null。INDEX 越界由 Python 驗證；不准編造 index
 
 Schema (output exactly this shape):
 {
@@ -102,8 +113,9 @@ Schema (output exactly this shape):
   "category": "earnings"|"regulatory"|"M&A"|"analyst"|"rumor"|"macro"|"partnership",
   "should_alert": <bool>,
   "alert_tier": "high"|"medium"|"low",
-  "chinese_summary": "<繁體中文 30-50 字 描述事實>",
-  "impact_assessment": "<繁體中文 30-60 字 AI 對股價影響判斷+機制原因>"
+  "chinese_summary": "<繁體中文 ≤200 字 描述事實>",
+  "impact_assessment": "<繁體中文 ≤200 字 AI 對股價影響判斷+機制原因>",
+  "event_date_index": <int index into DATE CANDIDATES, or null>
 }"""
 
 # Self-consistency uses a different framing to test if the model anchors on the article
@@ -129,17 +141,20 @@ Output ONLY a JSON object with the following schema (no prose, no markdown):
   "category": "earnings"|"regulatory"|"M&A"|"analyst"|"rumor"|"macro"|"partnership",
   "should_alert": <bool>,
   "alert_tier": "high"|"medium"|"low",
-  "chinese_summary": "<繁體中文 30-50 字>",
-  "impact_assessment": "<繁體中文 30-60 字>"
+  "chinese_summary": "<繁體中文 ≤200 字>",
+  "impact_assessment": "<繁體中文 ≤200 字>",
+  "event_date_index": <int index into DATE CANDIDATES at end of prompt, or null>
 }
 
 mention_quotes MUST be verbatim substrings of the article. Disambiguate TEM=Tempus AI (not Templeton Emerging Markets / TEMPO).
 
 should_alert=true ONLY if (a) relevance_type is company-specific or sector-policy AND (b) the article describes MATERIAL news (earnings, M&A, FDA, lawsuit, exec change, large filing, partnership). Routine governance (annual proxy, regular 10-Q, scheduled IR events, conference attendance) → should_alert=false.
 
-chinese_summary：描述具體事實。禁用 hedge 語。原文若無內文，明說「來源僅提供標題」。
+chinese_summary：描述具體事實，繁中最多 200 字。禁用 hedge 語。原文若無內文，明說「來源僅提供標題」。
 
-impact_assessment：1 句繁中 30-60 字，明確答「對股價影響為何 + 機制原因」。必須含方向（利多/利空/中性/混合）+ 強度（高/中/低/微）+ 機制。禁用「影響中性」「值得關注」這種廢話。"""
+impact_assessment：繁中最多 200 字，明確答「對股價影響為何 + 機制原因」。必須含方向（利多/利空/中性/混合）+ 強度（高/中/低/微）+ 機制。禁用「影響中性」「值得關注」這種廢話。
+
+event_date_index：從文末 DATE CANDIDATES 選 EVENT 發生日（交易日/簽約日/approval 日/quarter end），不是 filing/publication 日。不確定或候選都是 publication → null。候選空 → 必 null。"""
 
 
 _TRANSLATE_SYSTEM = """你是一個嚴謹的翻譯員。把英文標題翻譯成繁體中文。
@@ -241,6 +256,7 @@ def classify_with_llm(
     published: str,
     source: str,
     publisher: Optional[str],
+    date_candidates: Optional[list[DateCandidate]] = None,
     use_auditor_phrasing: bool = False,
     model: str | None = None,
     timeout: int = DEFAULT_TIMEOUT,
@@ -248,7 +264,11 @@ def classify_with_llm(
     """Call Claude CLI and return validated LLMVerdict. Retry on parse/validation fail.
 
     Default model selection: PRIMARY_MODEL (Opus) for primary classification,
-    SECONDARY_MODEL (Sonnet) for auditor pass. Override via `model` arg."""
+    SECONDARY_MODEL (Sonnet) for auditor pass. Override via `model` arg.
+
+    `date_candidates` is the Python-extracted candidate list for the event-date
+    harness. LLM picks an index; pipeline bounds-checks. None or [] → LLM is
+    instructed (via prompt block absence) that no candidates are available."""
     system_prompt = AUDITOR_SYSTEM if use_auditor_phrasing else CLASSIFIER_SYSTEM
     if model is None:
         model = AUDITOR_MODEL if use_auditor_phrasing else PRIMARY_MODEL
@@ -260,6 +280,7 @@ def classify_with_llm(
         published=published,
         source=source,
         publisher=publisher,
+        date_candidates=date_candidates or [],
     )
 
     last_err: Optional[Exception] = None
@@ -290,8 +311,19 @@ def _build_user_prompt(
     published: str,
     source: str,
     publisher: Optional[str],
+    date_candidates: list[DateCandidate],
 ) -> str:
     tickers_block = "\n".join(f"- {t}" for t in tickers)
+    if date_candidates:
+        cand_lines = "\n".join(
+            f"  [{i}] {c.iso_date}  ({c.surface_form!r} at char {c.char_offset})"
+            for i, c in enumerate(date_candidates)
+        )
+        candidates_block = f"\nDATE CANDIDATES (Python-extracted; pick EVENT date by index):\n{cand_lines}\n"
+    else:
+        candidates_block = (
+            "\nDATE CANDIDATES: (none — set event_date_index=null)\n"
+        )
     return f"""TARGET TICKERS:
 {tickers_block}
 
@@ -303,7 +335,7 @@ SOURCE: {source}{' (' + publisher + ')' if publisher else ''}
 
 CONTENT:
 {raw_text}
-
+{candidates_block}
 Classify according to the schema. Output JSON only."""
 
 

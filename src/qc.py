@@ -72,6 +72,11 @@ class QCLogger:
         a runaway retry loop or quota burn can be spotted before the bill."""
         self._counters[f"llm_call:{role}"] += 1
 
+    def record_anomaly(self, name: str) -> None:
+        """Generic counter for non-source-fetch anomalies (LLM bounds violations,
+        guardrail trips, etc.). Surfaces in daily-report under 'anomaly:<name>'."""
+        self._counters[f"anomaly:{name}"] += 1
+
     def record_source_anomaly(self, source: str, error: str) -> None:
         """M3: track source fetch failures. Caller (pipeline) catches the
         exception and calls this — turns a silent return-empty into a counted,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Literal
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -46,6 +46,12 @@ class LLMVerdict(BaseModel):
     # proxy-filing alert — Discord summary listed concrete details but gave no
     # signal on whether to act. impact_assessment forces the LLM to opine.
     impact_assessment: str
+    # Harness Layer 2: Python regex (date_extract) supplies a candidate list of
+    # dates found in the article body; LLM picks which one is the EVENT date
+    # (not the filing/publication date). null = no clear event date claim.
+    # Pipeline validates 0 <= index < len(candidates) post-hoc — this field
+    # alone is just an int hint, not authoritative until bounds-checked.
+    event_date_index: Optional[int] = None
 
     @field_validator("chinese_summary")
     @classmethod
