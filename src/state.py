@@ -42,8 +42,24 @@ class SeenStore:
         )
         return cur.fetchone() is not None
 
-    def mark_seen(self, item: NewsItem, day: Optional[date] = None) -> None:
+    def mark_seen(
+        self,
+        item: NewsItem,
+        day: Optional[date] = None,
+        *,
+        dedup_by_title: bool = True,
+    ) -> None:
+        """Record item as seen so future runs skip it.
+
+        dedup_by_title=False writes a unique-per-url sentinel as title_hash,
+        which means a different URL with the same normalized title won't
+        match. Used for items routed to REVIEW because we couldn't analyze
+        them (title_only body / known aggregator) — if the same story later
+        reaches us via a body-rich source (PR Newswire, Finviz), it must
+        not be silently deduped against the unanalyzable original."""
         d = (day or _today_utc()).isoformat()
+        url_hash = item.url_hash()
+        title_hash = item.title_hash() if dedup_by_title else f"!notitle:{url_hash}"
         self.conn.execute(
             """
             INSERT OR IGNORE INTO seen
@@ -52,8 +68,8 @@ class SeenStore:
             """,
             (
                 d,
-                item.url_hash(),
-                item.title_hash(),
+                url_hash,
+                title_hash,
                 item.ticker_hint,
                 item.source,
                 item.title[:200],

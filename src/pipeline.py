@@ -244,7 +244,18 @@ def run(config: PipelineConfig) -> dict:
             # Discord failures leave the item un-marked so the next run retries.
             # B1: dry_run never marks — re-runs are reproducible.
             if handled and not config.dry_run:
-                store.mark_seen(item)
+                # Items demoted to REVIEW *because* we couldn't analyze them
+                # (no body, or known aggregator publisher) must not block a
+                # subsequent body-rich version of the same story by title hash.
+                # Use the no-title-dedup sentinel so url_hash still prevents
+                # re-LLM'ing the same URL but a different URL with the same
+                # title can fall through to alert.
+                unanalyzable_review = decision.tier == "REVIEW" and any(
+                    r == "title_only_no_body_for_analysis"
+                    or r.startswith("aggregator_publisher:")
+                    for r in decision.reasons
+                )
+                store.mark_seen(item, dedup_by_title=not unanalyzable_review)
 
         # Daily housekeeping (only on real runs)
         if not config.dry_run:
