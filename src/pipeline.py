@@ -393,10 +393,14 @@ def decide_tier(
 ) -> TierDecision:
     """Pure function: oracle outputs → tier verdict per alert-rules.md.
 
-    body_fetch_status caps the tier when LLM had insufficient context
-    (title_only). Title-only HIGH-source items demote to MEDIUM with reason
-    'body_fetch_title_only' — explicit signal to user via Discord annotation
-    that they should click through for full context."""
+    Universal title-only gate: if body_fetch_status == 'title_only', the LLM
+    judged the item from the headline alone. Per user spec ('我想看確實可以
+    被分析的資料就好，只有標題檔，我覺得只是製造焦慮'), such items go to
+    REVIEW — captured in processed-log for backup, but never push a Discord
+    alert. EDGAR 8-K filings bypass this function entirely via
+    _critical_path; finnhub_news ships summary in raw_text and tags 'partial'
+    upfront so the source-context guard in _enrich_with_body keeps it out of
+    title_only state."""
     relevant = [
         t for t, rel in primary_verdict.ticker_relevance.items()
         if rel.is_relevant and rel.relevance_type != "buzzword-list-only"
@@ -430,18 +434,20 @@ def decide_tier(
             primary_ticker=primary_ticker,
         )
 
+    # Universal title-only gate — applies to every source. No body content
+    # means LLM can't assess sentiment / impact reliably; demote to REVIEW
+    # rather than fire a noise alert with '⚠️ 僅依標題判斷'.
+    if body_fetch_status == "title_only":
+        return TierDecision(
+            tier="REVIEW",
+            reasons=["title_only_no_body_for_analysis"],
+            primary_ticker=primary_ticker,
+        )
+
     kw_pass = any(keyword_results[t].passed for t in relevant if t in keyword_results)
 
     if source_confidence == "high":
         if kw_pass:
-            # T1: title-only body cap — HIGH signals without article body
-            # demote to MEDIUM so the user knows to click for context.
-            if body_fetch_status == "title_only":
-                return TierDecision(
-                    tier="MEDIUM",
-                    reasons=["body_fetch_title_only"],
-                    primary_ticker=primary_ticker,
-                )
             return TierDecision(tier="HIGH", reasons=[], primary_ticker=primary_ticker)
         return TierDecision(
             tier="REVIEW",
