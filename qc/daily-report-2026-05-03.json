@@ -1,13 +1,13 @@
 {
   "date": "2026-05-03",
-  "last_updated": "2026-05-03T17:11:12.931519+00:00",
-  "runs_today": 5,
+  "last_updated": "2026-05-03T21:05:38.362102+00:00",
+  "runs_today": 6,
   "counters": {
-    "verdict:DROP": 8852,
-    "body_fetch:summary_only": 8853,
-    "reason:date_too_old": 8846,
-    "verdict:REVIEW": 5,
-    "tier:REVIEW": 5,
+    "verdict:DROP": 10621,
+    "body_fetch:summary_only": 10623,
+    "reason:date_too_old": 10614,
+    "verdict:REVIEW": 6,
+    "tier:REVIEW": 6,
     "reason:aggregator_publisher:24/7 Wall St.": 3,
     "llm_call:primary": 4,
     "body_fetch:complete": 3,
@@ -15,7 +15,7 @@
     "reason:schema_gap_suspicious_veto": 3,
     "body_fetch:title_only": 1,
     "reason:title_only_no_body_for_analysis": 1,
-    "reason:already_sent": 3,
-    "reason:aggregator_publisher:Yahoo Finance": 1
+    "reason:already_sent": 4,
+    "reason:aggregator_publisher:Yahoo Finance": 2
   }
 }
