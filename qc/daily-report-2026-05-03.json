@@ -1,20 +1,20 @@
 {
   "date": "2026-05-03",
-  "last_updated": "2026-05-03T06:44:41.823348+00:00",
-  "runs_today": 2,
+  "last_updated": "2026-05-03T09:41:01.785814+00:00",
+  "runs_today": 3,
   "counters": {
-    "verdict:DROP": 3541,
-    "body_fetch:summary_only": 3541,
-    "reason:date_too_old": 3538,
-    "verdict:REVIEW": 3,
-    "tier:REVIEW": 3,
-    "reason:aggregator_publisher:24/7 Wall St.": 2,
+    "verdict:DROP": 5311,
+    "body_fetch:summary_only": 5312,
+    "reason:date_too_old": 5307,
+    "verdict:REVIEW": 4,
+    "tier:REVIEW": 4,
+    "reason:aggregator_publisher:24/7 Wall St.": 3,
     "llm_call:primary": 3,
     "body_fetch:complete": 2,
     "reason:llm_should_not_alert": 2,
     "reason:schema_gap_suspicious_veto": 2,
     "body_fetch:title_only": 1,
     "reason:title_only_no_body_for_analysis": 1,
-    "reason:already_sent": 1
+    "reason:already_sent": 2
   }
 }
