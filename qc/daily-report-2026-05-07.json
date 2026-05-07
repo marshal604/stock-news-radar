@@ -1,0 +1,28 @@
+{
+  "date": "2026-05-07",
+  "last_updated": "2026-05-07T04:15:36.735195+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1744,
+    "body_fetch:summary_only": 1756,
+    "reason:date_too_old": 1741,
+    "body_fetch:partial": 11,
+    "verdict:DEFER": 22,
+    "reason:max_items_per_run_exceeded:medium": 22,
+    "llm_call:primary": 19,
+    "llm_call:auditor": 12,
+    "verdict:SENT": 12,
+    "tier:HIGH": 7,
+    "body_fetch:complete": 14,
+    "reason:llm_no_relevant_or_buzzword_only": 3,
+    "reason:classifier_numeric_hallucination": 1,
+    "body_fetch:title_only": 2,
+    "verdict:REVIEW": 5,
+    "tier:REVIEW": 5,
+    "reason:differential_disagreement_kw_no_llm_yes": 2,
+    "reason:partial_quote_failure": 1,
+    "reason:aggregator_publisher:Yahoo Finance Australia": 1,
+    "tier:MEDIUM": 5,
+    "reason:title_only_no_body_for_analysis": 1
+  }
+}
