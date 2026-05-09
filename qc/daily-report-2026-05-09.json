@@ -1,12 +1,12 @@
 {
   "date": "2026-05-09",
-  "last_updated": "2026-05-09T17:16:10.167337+00:00",
-  "runs_today": 5,
+  "last_updated": "2026-05-09T21:05:38.286521+00:00",
+  "runs_today": 6,
   "counters": {
-    "verdict:DROP": 8884,
-    "body_fetch:summary_only": 8819,
-    "reason:date_too_old": 8850,
-    "body_fetch:partial": 71,
+    "verdict:DROP": 10664,
+    "body_fetch:summary_only": 10587,
+    "reason:date_too_old": 10628,
+    "body_fetch:partial": 85,
     "llm_call:primary": 22,
     "llm_call:auditor": 8,
     "verdict:SENT": 6,
@@ -15,8 +15,8 @@
     "reason:llm_should_not_alert": 5,
     "reason:schema_gap_suspicious_veto": 5,
     "reason:classifier_numeric_hallucination": 1,
-    "verdict:REVIEW": 18,
-    "tier:REVIEW": 18,
+    "verdict:REVIEW": 20,
+    "tier:REVIEW": 20,
     "reason:differential_disagreement_kw_no_llm_yes": 1,
     "reason:llm_no_relevant_or_buzzword_only": 1,
     "tier:MEDIUM": 4,
@@ -24,10 +24,10 @@
     "reason:exclude_strict_hit:Cathie Wood Buys": 1,
     "body_fetch:title_only": 7,
     "reason:title_only_no_body_for_analysis": 6,
-    "reason:aggregator_publisher:MSN": 6,
+    "reason:aggregator_publisher:MSN": 7,
     "reason:medium_source_no_keyword_match": 1,
-    "reason:already_sent": 27,
+    "reason:already_sent": 29,
     "reason:competitor_signal_data_collection": 1,
-    "reason:aggregator_publisher:Yahoo Finance": 1
+    "reason:aggregator_publisher:Yahoo Finance": 2
   }
 }
