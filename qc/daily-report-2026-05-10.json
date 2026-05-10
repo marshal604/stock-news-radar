@@ -1,0 +1,20 @@
+{
+  "date": "2026-05-10",
+  "last_updated": "2026-05-10T04:19:49.019504+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1769,
+    "body_fetch:summary_only": 1765,
+    "reason:date_too_old": 1769,
+    "body_fetch:partial": 5,
+    "verdict:REVIEW": 2,
+    "tier:REVIEW": 2,
+    "reason:aggregator_publisher:Yahoo Finance": 1,
+    "llm_call:primary": 2,
+    "llm_call:auditor": 2,
+    "verdict:SENT": 1,
+    "body_fetch:complete": 2,
+    "tier:MEDIUM": 1,
+    "reason:self_consistency_mismatch": 1
+  }
+}
