@@ -1,0 +1,17 @@
+{
+  "date": "2026-05-13",
+  "last_updated": "2026-05-13T04:16:52.230819+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1769,
+    "body_fetch:summary_only": 1764,
+    "reason:date_too_old": 1766,
+    "body_fetch:partial": 3,
+    "llm_call:primary": 3,
+    "body_fetch:complete": 3,
+    "reason:llm_no_relevant_or_buzzword_only": 3,
+    "verdict:REVIEW": 1,
+    "tier:REVIEW": 1,
+    "reason:competitor_signal_data_collection": 1
+  }
+}
