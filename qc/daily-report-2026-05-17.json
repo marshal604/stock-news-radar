@@ -1,11 +1,11 @@
 {
   "date": "2026-05-17",
-  "last_updated": "2026-05-17T17:18:44.914032+00:00",
-  "runs_today": 4,
+  "last_updated": "2026-05-17T21:10:32.640102+00:00",
+  "runs_today": 5,
   "counters": {
-    "verdict:DROP": 7053,
-    "body_fetch:summary_only": 7057,
-    "reason:date_too_old": 7048,
+    "verdict:DROP": 8817,
+    "body_fetch:summary_only": 8821,
+    "reason:date_too_old": 8810,
     "verdict:REVIEW": 6,
     "tier:REVIEW": 6,
     "reason:aggregator_publisher:MSN": 5,
@@ -13,6 +13,6 @@
     "body_fetch:complete": 2,
     "reason:llm_no_relevant_or_buzzword_only": 1,
     "reason:medium_source_no_keyword_match": 1,
-    "reason:already_sent": 4
+    "reason:already_sent": 6
   }
 }
