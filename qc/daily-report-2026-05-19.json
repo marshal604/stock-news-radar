@@ -1,17 +1,17 @@
 {
   "date": "2026-05-19",
-  "last_updated": "2026-05-19T15:53:43.657895+00:00",
-  "runs_today": 3,
+  "last_updated": "2026-05-19T18:18:02.307723+00:00",
+  "runs_today": 4,
   "counters": {
-    "verdict:DROP": 5278,
-    "body_fetch:summary_only": 5278,
-    "reason:date_too_old": 5263,
-    "body_fetch:partial": 5,
+    "verdict:DROP": 7038,
+    "body_fetch:summary_only": 7038,
+    "reason:date_too_old": 7019,
+    "body_fetch:partial": 6,
     "llm_call:primary": 7,
     "body_fetch:complete": 5,
     "reason:llm_no_relevant_or_buzzword_only": 2,
-    "verdict:REVIEW": 9,
-    "tier:REVIEW": 9,
+    "verdict:REVIEW": 10,
+    "tier:REVIEW": 10,
     "reason:aggregator_publisher:Yahoo Finance": 4,
     "reason:aggregator_publisher:MSN": 3,
     "reason:competitor_signal_data_collection": 1,
@@ -20,7 +20,8 @@
     "llm_call:auditor": 1,
     "verdict:SENT": 1,
     "tier:MEDIUM": 1,
-    "reason:already_sent": 10,
-    "reason:medium_source_no_keyword_match": 1
+    "reason:already_sent": 14,
+    "reason:medium_source_no_keyword_match": 1,
+    "reason:aggregator_publisher:24/7 Wall St.": 1
   }
 }
