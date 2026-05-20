@@ -1,0 +1,20 @@
+{
+  "date": "2026-05-20",
+  "last_updated": "2026-05-20T04:41:25.269727+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1758,
+    "body_fetch:summary_only": 1757,
+    "reason:date_too_old": 1754,
+    "body_fetch:partial": 2,
+    "llm_call:primary": 5,
+    "body_fetch:complete": 4,
+    "reason:llm_no_relevant_or_buzzword_only": 2,
+    "reason:llm_should_not_alert": 2,
+    "verdict:REVIEW": 5,
+    "tier:REVIEW": 5,
+    "reason:aggregator_publisher:24/7 Wall St.": 1,
+    "reason:competitor_signal_data_collection": 3,
+    "reason:medium_source_no_keyword_match": 1
+  }
+}
