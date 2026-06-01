@@ -1,22 +1,24 @@
 {
   "date": "2026-06-01",
-  "last_updated": "2026-06-01T05:22:26.222095+00:00",
-  "runs_today": 1,
+  "last_updated": "2026-06-01T13:49:16.565045+00:00",
+  "runs_today": 2,
   "counters": {
-    "verdict:DROP": 1757,
-    "body_fetch:summary_only": 1756,
-    "reason:date_too_old": 1756,
-    "body_fetch:partial": 1,
-    "llm_call:primary": 7,
-    "verdict:REVIEW": 7,
-    "body_fetch:complete": 6,
-    "tier:REVIEW": 7,
+    "verdict:DROP": 3508,
+    "body_fetch:summary_only": 3508,
+    "reason:date_too_old": 3506,
+    "body_fetch:partial": 2,
+    "llm_call:primary": 16,
+    "verdict:REVIEW": 18,
+    "body_fetch:complete": 13,
+    "tier:REVIEW": 18,
     "reason:differential_disagreement_kw_no_llm_yes": 3,
-    "reason:aggregator_publisher:Yahoo Finance": 1,
+    "reason:aggregator_publisher:Yahoo Finance": 3,
     "reason:medium_source_no_keyword_match": 2,
-    "body_fetch:title_only": 1,
+    "body_fetch:title_only": 3,
     "reason:title_only_no_body_for_analysis": 1,
     "reason:llm_should_not_alert": 1,
-    "reason:schema_gap_suspicious_veto": 1
+    "reason:schema_gap_suspicious_veto": 1,
+    "reason:already_sent": 1,
+    "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr='' stdout='Your organization does not have access to Claude. Please login again or contact your administrator.\\n'": 9
   }
 }
