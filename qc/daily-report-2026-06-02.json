@@ -1,0 +1,19 @@
+{
+  "date": "2026-06-02",
+  "last_updated": "2026-06-02T05:04:12.211960+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1753,
+    "body_fetch:summary_only": 1755,
+    "reason:date_too_old": 1753,
+    "body_fetch:partial": 4,
+    "llm_call:primary": 13,
+    "verdict:REVIEW": 16,
+    "body_fetch:title_only": 3,
+    "tier:REVIEW": 16,
+    "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr='' stdout='Your organization does not have access to Claude. Please login again or contact your administrator.\\n'": 13,
+    "body_fetch:complete": 7,
+    "reason:competitor_signal_data_collection": 1,
+    "reason:aggregator_publisher:Yahoo Finance": 2
+  }
+}
