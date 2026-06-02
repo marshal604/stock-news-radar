@@ -1,20 +1,20 @@
 {
   "date": "2026-06-02",
-  "last_updated": "2026-06-02T12:16:58.007881+00:00",
-  "runs_today": 2,
+  "last_updated": "2026-06-02T16:58:57.064273+00:00",
+  "runs_today": 3,
   "counters": {
-    "verdict:DROP": 3515,
-    "body_fetch:summary_only": 3513,
-    "reason:date_too_old": 3509,
-    "body_fetch:partial": 9,
-    "llm_call:primary": 18,
-    "verdict:REVIEW": 22,
-    "body_fetch:title_only": 4,
-    "tier:REVIEW": 22,
-    "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr='' stdout='Your organization does not have access to Claude. Please login again or contact your administrator.\\n'": 18,
-    "body_fetch:complete": 11,
+    "verdict:DROP": 5278,
+    "body_fetch:summary_only": 5273,
+    "reason:date_too_old": 5267,
+    "body_fetch:partial": 14,
+    "llm_call:primary": 22,
+    "verdict:REVIEW": 28,
+    "body_fetch:title_only": 5,
+    "tier:REVIEW": 28,
+    "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr='' stdout='Your organization does not have access to Claude. Please login again or contact your administrator.\\n'": 22,
+    "body_fetch:complete": 14,
     "reason:competitor_signal_data_collection": 1,
-    "reason:aggregator_publisher:Yahoo Finance": 3,
-    "reason:already_sent": 6
+    "reason:aggregator_publisher:Yahoo Finance": 5,
+    "reason:already_sent": 11
   }
 }
