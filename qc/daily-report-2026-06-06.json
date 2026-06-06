@@ -1,12 +1,12 @@
 {
   "date": "2026-06-06",
-  "last_updated": "2026-06-06T17:37:18.528292+00:00",
-  "runs_today": 4,
+  "last_updated": "2026-06-06T21:31:31.339243+00:00",
+  "runs_today": 5,
   "counters": {
-    "verdict:DROP": 7126,
-    "body_fetch:summary_only": 7111,
-    "reason:date_too_old": 7098,
-    "body_fetch:partial": 17,
+    "verdict:DROP": 8910,
+    "body_fetch:summary_only": 8891,
+    "reason:date_too_old": 8877,
+    "body_fetch:partial": 21,
     "llm_call:primary": 17,
     "body_fetch:complete": 9,
     "reason:llm_should_not_alert": 6,
@@ -19,7 +19,7 @@
     "reason:aggregator_publisher:Yahoo! Finance Canada": 2,
     "reason:title_only_no_body_for_analysis": 5,
     "reason:competitor_signal_data_collection": 4,
-    "reason:already_sent": 19,
+    "reason:already_sent": 24,
     "llm_call:auditor": 3,
     "reason:self_consistency_mismatch": 3
   }
