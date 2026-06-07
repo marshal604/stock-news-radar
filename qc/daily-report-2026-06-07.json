@@ -1,14 +1,14 @@
 {
   "date": "2026-06-07",
-  "last_updated": "2026-06-07T05:00:13.609583+00:00",
-  "runs_today": 1,
+  "last_updated": "2026-06-07T10:37:52.381974+00:00",
+  "runs_today": 2,
   "counters": {
-    "verdict:DROP": 1750,
-    "body_fetch:summary_only": 1749,
-    "reason:date_too_old": 1749,
-    "body_fetch:partial": 1,
-    "verdict:REVIEW": 3,
-    "tier:REVIEW": 3,
+    "verdict:DROP": 3528,
+    "body_fetch:summary_only": 3527,
+    "reason:date_too_old": 3527,
+    "body_fetch:partial": 2,
+    "verdict:REVIEW": 4,
+    "tier:REVIEW": 4,
     "reason:competitor_signal_data_collection": 1,
     "llm_call:primary": 3,
     "llm_call:auditor": 1,
@@ -16,6 +16,7 @@
     "reason:self_consistency_mismatch": 1,
     "reason:llm_should_not_alert": 1,
     "reason:schema_gap_suspicious_veto": 1,
-    "reason:partial_quote_failure": 1
+    "reason:partial_quote_failure": 1,
+    "reason:aggregator_publisher:AOL.com": 1
   }
 }
