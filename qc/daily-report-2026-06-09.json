@@ -1,0 +1,21 @@
+{
+  "date": "2026-06-09",
+  "last_updated": "2026-06-09T04:40:46.509808+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1778,
+    "body_fetch:summary_only": 1776,
+    "reason:date_too_old": 1773,
+    "llm_call:primary": 5,
+    "body_fetch:partial": 2,
+    "reason:llm_should_not_alert": 4,
+    "reason:schema_gap_suspicious_veto": 4,
+    "reason:llm_no_relevant_or_buzzword_only": 1,
+    "body_fetch:complete": 3,
+    "verdict:REVIEW": 3,
+    "tier:REVIEW": 3,
+    "reason:aggregator_publisher:AOL.com": 1,
+    "reason:aggregator_publisher:MSN": 1,
+    "reason:competitor_signal_data_collection": 1
+  }
+}
