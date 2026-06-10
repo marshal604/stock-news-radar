@@ -1,19 +1,19 @@
 {
   "date": "2026-06-10",
-  "last_updated": "2026-06-10T11:50:02.677096+00:00",
-  "runs_today": 2,
+  "last_updated": "2026-06-10T16:10:44.825405+00:00",
+  "runs_today": 3,
   "counters": {
-    "verdict:DROP": 3554,
-    "body_fetch:summary_only": 3551,
-    "reason:date_too_old": 3543,
-    "body_fetch:partial": 9,
+    "verdict:DROP": 5337,
+    "body_fetch:summary_only": 5331,
+    "reason:date_too_old": 5322,
+    "body_fetch:partial": 13,
     "verdict:DEFER": 2,
     "reason:max_items_per_run_exceeded:medium": 2,
     "llm_call:primary": 15,
     "body_fetch:complete": 11,
     "reason:llm_no_relevant_or_buzzword_only": 2,
-    "verdict:REVIEW": 13,
-    "tier:REVIEW": 13,
+    "verdict:REVIEW": 14,
+    "tier:REVIEW": 14,
     "reason:differential_disagreement_kw_no_llm_yes": 2,
     "llm_call:auditor": 6,
     "verdict:SENT": 3,
@@ -24,7 +24,7 @@
     "reason:self_consistency_mismatch": 4,
     "reason:competitor_signal_data_collection": 6,
     "body_fetch:title_only": 1,
-    "reason:aggregator_publisher:Yahoo Finance": 2,
-    "reason:already_sent": 4
+    "reason:aggregator_publisher:Yahoo Finance": 3,
+    "reason:already_sent": 8
   }
 }
