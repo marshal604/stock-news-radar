@@ -1,0 +1,21 @@
+{
+  "date": "2026-06-11",
+  "last_updated": "2026-06-11T05:03:30.832802+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1776,
+    "body_fetch:summary_only": 1772,
+    "reason:date_too_old": 1770,
+    "body_fetch:partial": 2,
+    "llm_call:primary": 6,
+    "body_fetch:complete": 5,
+    "reason:llm_no_relevant_or_buzzword_only": 1,
+    "reason:llm_should_not_alert": 5,
+    "reason:schema_gap_suspicious_veto": 4,
+    "body_fetch:title_only": 1,
+    "verdict:REVIEW": 4,
+    "tier:REVIEW": 4,
+    "reason:competitor_signal_data_collection": 3,
+    "reason:aggregator_publisher:Yahoo Finance": 1
+  }
+}
