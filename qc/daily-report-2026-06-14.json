@@ -1,12 +1,12 @@
 {
   "date": "2026-06-14",
-  "last_updated": "2026-06-14T05:11:54.980289+00:00",
-  "runs_today": 1,
+  "last_updated": "2026-06-14T11:09:46.973931+00:00",
+  "runs_today": 2,
   "counters": {
-    "verdict:DROP": 1763,
-    "body_fetch:summary_only": 1761,
-    "reason:date_too_old": 1763,
-    "body_fetch:partial": 2,
+    "verdict:DROP": 3536,
+    "body_fetch:summary_only": 3532,
+    "reason:date_too_old": 3536,
+    "body_fetch:partial": 4,
     "llm_call:primary": 1,
     "llm_call:auditor": 1,
     "verdict:SENT": 1,
