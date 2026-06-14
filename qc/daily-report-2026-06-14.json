@@ -1,0 +1,16 @@
+{
+  "date": "2026-06-14",
+  "last_updated": "2026-06-14T05:11:54.980289+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1763,
+    "body_fetch:summary_only": 1761,
+    "reason:date_too_old": 1763,
+    "body_fetch:partial": 2,
+    "llm_call:primary": 1,
+    "llm_call:auditor": 1,
+    "verdict:SENT": 1,
+    "body_fetch:complete": 1,
+    "tier:MEDIUM": 1
+  }
+}
