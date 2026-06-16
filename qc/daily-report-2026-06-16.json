@@ -1,0 +1,20 @@
+{
+  "date": "2026-06-16",
+  "last_updated": "2026-06-16T05:39:57.879429+00:00",
+  "runs_today": 1,
+  "counters": {
+    "source_anomaly:edgar": 1,
+    "verdict:DROP": 1749,
+    "body_fetch:summary_only": 1746,
+    "reason:date_too_old": 1743,
+    "llm_call:primary": 6,
+    "body_fetch:complete": 6,
+    "reason:llm_no_relevant_or_buzzword_only": 3,
+    "reason:llm_should_not_alert": 3,
+    "reason:schema_gap_suspicious_veto": 3,
+    "verdict:REVIEW": 3,
+    "tier:REVIEW": 3,
+    "reason:aggregator_publisher:Yahoo Finance Australia": 1,
+    "reason:competitor_signal_data_collection": 2
+  }
+}
