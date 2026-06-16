@@ -1,24 +1,24 @@
 {
   "date": "2026-06-16",
-  "last_updated": "2026-06-16T19:52:52.126737+00:00",
-  "runs_today": 3,
+  "last_updated": "2026-06-16T22:24:16.715593+00:00",
+  "runs_today": 4,
   "counters": {
     "source_anomaly:edgar": 1,
-    "verdict:DROP": 5279,
-    "body_fetch:summary_only": 5273,
-    "reason:date_too_old": 5267,
-    "llm_call:primary": 10,
+    "verdict:DROP": 7045,
+    "body_fetch:summary_only": 7038,
+    "reason:date_too_old": 7028,
+    "llm_call:primary": 11,
     "body_fetch:complete": 10,
     "reason:llm_no_relevant_or_buzzword_only": 6,
-    "reason:llm_should_not_alert": 3,
-    "reason:schema_gap_suspicious_veto": 3,
-    "verdict:REVIEW": 6,
-    "tier:REVIEW": 6,
+    "reason:llm_should_not_alert": 4,
+    "reason:schema_gap_suspicious_veto": 4,
+    "verdict:REVIEW": 7,
+    "tier:REVIEW": 7,
     "reason:aggregator_publisher:Yahoo Finance Australia": 1,
     "reason:competitor_signal_data_collection": 2,
-    "body_fetch:partial": 2,
-    "reason:already_sent": 3,
+    "body_fetch:partial": 4,
+    "reason:already_sent": 7,
     "reason:medium_source_no_keyword_match": 1,
-    "reason:aggregator_publisher:24/7 Wall St.": 2
+    "reason:aggregator_publisher:24/7 Wall St.": 3
   }
 }
