@@ -1,10 +1,13 @@
 {
   "date": "2026-06-22",
-  "last_updated": "2026-06-22T05:34:17.337850+00:00",
-  "runs_today": 1,
+  "last_updated": "2026-06-22T13:44:59.592539+00:00",
+  "runs_today": 2,
   "counters": {
-    "verdict:DROP": 1766,
-    "body_fetch:summary_only": 1766,
-    "reason:date_too_old": 1766
+    "verdict:DROP": 3532,
+    "body_fetch:summary_only": 3533,
+    "reason:date_too_old": 3532,
+    "verdict:REVIEW": 1,
+    "tier:REVIEW": 1,
+    "reason:aggregator_publisher:MSN": 1
   }
 }
