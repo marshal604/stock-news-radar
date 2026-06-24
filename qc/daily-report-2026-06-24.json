@@ -1,0 +1,27 @@
+{
+  "date": "2026-06-24",
+  "last_updated": "2026-06-24T04:47:55.473507+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1736,
+    "body_fetch:summary_only": 1757,
+    "reason:date_too_old": 1733,
+    "body_fetch:partial": 5,
+    "verdict:DEFER": 21,
+    "reason:max_items_per_run_exceeded:medium": 21,
+    "llm_call:translate": 1,
+    "verdict:SENT": 12,
+    "tier:CRITICAL": 1,
+    "llm_call:primary": 15,
+    "llm_call:auditor": 12,
+    "body_fetch:complete": 12,
+    "tier:HIGH": 7,
+    "reason:llm_no_relevant_or_buzzword_only": 3,
+    "tier:MEDIUM": 4,
+    "verdict:REVIEW": 5,
+    "tier:REVIEW": 5,
+    "reason:competitor_signal_data_collection": 2,
+    "reason:self_consistency_mismatch": 1,
+    "reason:aggregator_publisher:Yahoo Finance": 2
+  }
+}
