@@ -1,20 +1,20 @@
 {
   "date": "2026-06-28",
-  "last_updated": "2026-06-28T17:38:01.582489+00:00",
-  "runs_today": 4,
+  "last_updated": "2026-06-28T21:31:41.432633+00:00",
+  "runs_today": 5,
   "counters": {
-    "verdict:DROP": 7040,
-    "body_fetch:summary_only": 7041,
-    "reason:date_too_old": 7036,
-    "body_fetch:partial": 4,
+    "verdict:DROP": 8808,
+    "body_fetch:summary_only": 8810,
+    "reason:date_too_old": 8803,
+    "body_fetch:partial": 5,
     "llm_call:primary": 1,
     "body_fetch:complete": 1,
     "reason:llm_should_not_alert": 1,
     "reason:schema_gap_suspicious_veto": 1,
-    "reason:already_sent": 3,
-    "verdict:REVIEW": 6,
-    "tier:REVIEW": 6,
-    "reason:aggregator_publisher:Yahoo Finance": 3,
-    "reason:aggregator_publisher:MSN": 3
+    "reason:already_sent": 4,
+    "verdict:REVIEW": 8,
+    "tier:REVIEW": 8,
+    "reason:aggregator_publisher:Yahoo Finance": 4,
+    "reason:aggregator_publisher:MSN": 4
   }
 }
