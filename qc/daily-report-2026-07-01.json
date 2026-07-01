@@ -1,20 +1,20 @@
 {
   "date": "2026-07-01",
-  "last_updated": "2026-07-01T15:15:19.470856+00:00",
-  "runs_today": 3,
+  "last_updated": "2026-07-01T18:19:07.469470+00:00",
+  "runs_today": 4,
   "counters": {
-    "verdict:DROP": 5197,
-    "body_fetch:summary_only": 5198,
-    "reason:date_too_old": 5191,
-    "body_fetch:partial": 3,
-    "verdict:REVIEW": 12,
-    "tier:REVIEW": 12,
+    "verdict:DROP": 6960,
+    "body_fetch:summary_only": 6960,
+    "reason:date_too_old": 6950,
+    "body_fetch:partial": 6,
+    "verdict:REVIEW": 16,
+    "tier:REVIEW": 16,
     "reason:competitor_signal_data_collection": 3,
-    "llm_call:primary": 8,
-    "body_fetch:complete": 5,
-    "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr='' stdout='Your organization does not have access to Claude. Please login again or contact your administrator.\\n'": 8,
+    "llm_call:primary": 12,
+    "body_fetch:complete": 7,
+    "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr='' stdout='Your organization does not have access to Claude. Please login again or contact your administrator.\\n'": 12,
     "body_fetch:title_only": 3,
     "reason:aggregator_publisher:MSN": 1,
-    "reason:already_sent": 6
+    "reason:already_sent": 10
   }
 }
