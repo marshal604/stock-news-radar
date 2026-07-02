@@ -1,23 +1,24 @@
 {
   "date": "2026-07-02",
-  "last_updated": "2026-07-02T18:03:53.806989+00:00",
-  "runs_today": 4,
+  "last_updated": "2026-07-02T21:36:45.859417+00:00",
+  "runs_today": 5,
   "counters": {
-    "verdict:DROP": 7047,
-    "body_fetch:summary_only": 7057,
-    "reason:date_too_old": 7009,
-    "body_fetch:partial": 15,
+    "verdict:DROP": 8809,
+    "body_fetch:summary_only": 8820,
+    "reason:date_too_old": 8766,
+    "body_fetch:partial": 18,
     "verdict:DEFER": 5,
     "reason:max_items_per_run_exceeded:medium": 5,
-    "llm_call:primary": 18,
-    "verdict:REVIEW": 33,
-    "body_fetch:complete": 10,
-    "tier:REVIEW": 33,
-    "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr='' stdout='Your organization does not have access to Claude. Please login again or contact your administrator.\\n'": 18,
-    "reason:aggregator_publisher:Yahoo Finance": 6,
+    "llm_call:primary": 22,
+    "verdict:REVIEW": 41,
+    "body_fetch:complete": 14,
+    "tier:REVIEW": 41,
+    "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr='' stdout='Your organization does not have access to Claude. Please login again or contact your administrator.\\n'": 22,
+    "reason:aggregator_publisher:Yahoo Finance": 9,
     "body_fetch:title_only": 3,
     "reason:competitor_signal_data_collection": 8,
-    "reason:already_sent": 38,
-    "reason:aggregator_publisher:MSN": 1
+    "reason:already_sent": 43,
+    "reason:aggregator_publisher:MSN": 1,
+    "reason:aggregator_publisher:Yahoo Finance Singapore": 1
   }
 }
