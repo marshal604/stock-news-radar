@@ -1,24 +1,26 @@
 {
   "date": "2026-07-04",
-  "last_updated": "2026-07-04T14:02:36.041929+00:00",
-  "runs_today": 4,
+  "last_updated": "2026-07-04T17:30:55.225568+00:00",
+  "runs_today": 5,
   "counters": {
-    "verdict:DROP": 6547,
-    "body_fetch:summary_only": 6547,
-    "reason:date_too_old": 6537,
-    "llm_call:primary": 6,
+    "verdict:DROP": 8317,
+    "body_fetch:summary_only": 8317,
+    "reason:date_too_old": 8306,
+    "llm_call:primary": 7,
     "body_fetch:complete": 5,
     "reason:llm_should_not_alert": 3,
     "reason:schema_gap_suspicious_veto": 3,
-    "verdict:REVIEW": 5,
-    "tier:REVIEW": 5,
+    "verdict:REVIEW": 7,
+    "tier:REVIEW": 7,
     "reason:partial_quote_failure": 1,
     "llm_call:auditor": 1,
     "verdict:SENT": 1,
     "tier:MEDIUM": 1,
-    "reason:aggregator_publisher:MSN": 3,
-    "body_fetch:title_only": 1,
-    "reason:already_sent": 7,
-    "reason:differential_disagreement_kw_no_llm_yes": 1
+    "reason:aggregator_publisher:MSN": 4,
+    "body_fetch:title_only": 2,
+    "reason:already_sent": 8,
+    "reason:differential_disagreement_kw_no_llm_yes": 1,
+    "body_fetch:partial": 1,
+    "reason:title_only_no_body_for_analysis": 1
   }
 }
