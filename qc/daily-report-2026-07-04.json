@@ -1,0 +1,10 @@
+{
+  "date": "2026-07-04",
+  "last_updated": "2026-07-04T04:07:22.797594+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1240,
+    "body_fetch:summary_only": 1240,
+    "reason:date_too_old": 1240
+  }
+}
