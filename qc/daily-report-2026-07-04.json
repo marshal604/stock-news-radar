@@ -1,23 +1,24 @@
 {
   "date": "2026-07-04",
-  "last_updated": "2026-07-04T10:28:17.294697+00:00",
-  "runs_today": 3,
+  "last_updated": "2026-07-04T14:02:36.041929+00:00",
+  "runs_today": 4,
   "counters": {
-    "verdict:DROP": 4777,
-    "body_fetch:summary_only": 4776,
-    "reason:date_too_old": 4771,
-    "llm_call:primary": 5,
-    "body_fetch:complete": 4,
+    "verdict:DROP": 6547,
+    "body_fetch:summary_only": 6547,
+    "reason:date_too_old": 6537,
+    "llm_call:primary": 6,
+    "body_fetch:complete": 5,
     "reason:llm_should_not_alert": 3,
     "reason:schema_gap_suspicious_veto": 3,
-    "verdict:REVIEW": 3,
-    "tier:REVIEW": 3,
+    "verdict:REVIEW": 5,
+    "tier:REVIEW": 5,
     "reason:partial_quote_failure": 1,
     "llm_call:auditor": 1,
     "verdict:SENT": 1,
     "tier:MEDIUM": 1,
-    "reason:aggregator_publisher:MSN": 2,
+    "reason:aggregator_publisher:MSN": 3,
     "body_fetch:title_only": 1,
-    "reason:already_sent": 3
+    "reason:already_sent": 7,
+    "reason:differential_disagreement_kw_no_llm_yes": 1
   }
 }
