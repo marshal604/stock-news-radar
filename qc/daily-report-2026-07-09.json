@@ -1,13 +1,13 @@
 {
   "date": "2026-07-09",
-  "last_updated": "2026-07-09T11:22:08.169125+00:00",
-  "runs_today": 2,
+  "last_updated": "2026-07-09T15:37:42.734672+00:00",
+  "runs_today": 3,
   "counters": {
-    "verdict:DROP": 3523,
-    "body_fetch:summary_only": 3525,
-    "reason:date_too_old": 3508,
-    "llm_call:primary": 12,
-    "body_fetch:complete": 9,
+    "verdict:DROP": 5280,
+    "body_fetch:summary_only": 5285,
+    "reason:date_too_old": 5260,
+    "llm_call:primary": 16,
+    "body_fetch:complete": 12,
     "reason:llm_no_relevant_or_buzzword_only": 4,
     "body_fetch:title_only": 2,
     "reason:llm_should_not_alert": 4,
@@ -15,13 +15,14 @@
     "llm_call:auditor": 3,
     "verdict:SENT": 3,
     "tier:MEDIUM": 3,
-    "verdict:REVIEW": 11,
-    "tier:REVIEW": 11,
+    "verdict:REVIEW": 18,
+    "tier:REVIEW": 18,
     "reason:title_only_no_body_for_analysis": 1,
-    "reason:aggregator_publisher:Yahoo Finance": 5,
+    "reason:aggregator_publisher:Yahoo Finance": 7,
     "reason:competitor_signal_data_collection": 3,
-    "body_fetch:partial": 1,
-    "reason:aggregator_publisher:MSN": 2,
-    "reason:already_sent": 7
+    "body_fetch:partial": 2,
+    "reason:aggregator_publisher:MSN": 3,
+    "reason:already_sent": 12,
+    "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr='' stdout=\"You've hit your limit · resets 7:30pm (UTC)\\n\"": 4
   }
 }
