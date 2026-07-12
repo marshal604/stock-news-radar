@@ -1,12 +1,12 @@
 {
   "date": "2026-07-12",
-  "last_updated": "2026-07-12T10:02:31.281293+00:00",
-  "runs_today": 3,
+  "last_updated": "2026-07-12T13:58:51.098238+00:00",
+  "runs_today": 4,
   "counters": {
-    "verdict:DROP": 5307,
-    "body_fetch:summary_only": 5305,
-    "reason:date_too_old": 5304,
-    "body_fetch:partial": 3,
+    "verdict:DROP": 7077,
+    "body_fetch:summary_only": 7074,
+    "reason:date_too_old": 7073,
+    "body_fetch:partial": 4,
     "verdict:REVIEW": 1,
     "tier:REVIEW": 1,
     "reason:competitor_signal_data_collection": 1,
@@ -15,6 +15,6 @@
     "verdict:SENT": 1,
     "body_fetch:complete": 1,
     "tier:MEDIUM": 1,
-    "reason:already_sent": 3
+    "reason:already_sent": 4
   }
 }
