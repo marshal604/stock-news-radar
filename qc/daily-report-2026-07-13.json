@@ -1,0 +1,11 @@
+{
+  "date": "2026-07-13",
+  "last_updated": "2026-07-13T04:05:04.710217+00:00",
+  "runs_today": 1,
+  "counters": {
+    "source_anomaly:edgar": 1,
+    "verdict:DROP": 1746,
+    "body_fetch:summary_only": 1746,
+    "reason:date_too_old": 1746
+  }
+}
