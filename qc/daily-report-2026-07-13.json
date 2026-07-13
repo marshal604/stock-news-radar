@@ -1,11 +1,15 @@
 {
   "date": "2026-07-13",
-  "last_updated": "2026-07-13T07:44:05.341622+00:00",
-  "runs_today": 2,
+  "last_updated": "2026-07-13T11:32:09.155063+00:00",
+  "runs_today": 3,
   "counters": {
     "source_anomaly:edgar": 1,
-    "verdict:DROP": 3514,
-    "body_fetch:summary_only": 3514,
-    "reason:date_too_old": 3514
+    "verdict:DROP": 5282,
+    "body_fetch:summary_only": 5281,
+    "reason:date_too_old": 5281,
+    "llm_call:primary": 1,
+    "body_fetch:complete": 1,
+    "reason:llm_should_not_alert": 1,
+    "reason:schema_gap_suspicious_veto": 1
   }
 }
