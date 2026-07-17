@@ -1,0 +1,24 @@
+{
+  "date": "2026-07-17",
+  "last_updated": "2026-07-17T03:43:37.934672+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1767,
+    "body_fetch:summary_only": 1766,
+    "reason:date_too_old": 1765,
+    "llm_call:primary": 6,
+    "body_fetch:partial": 2,
+    "reason:llm_no_relevant_or_buzzword_only": 2,
+    "verdict:REVIEW": 4,
+    "body_fetch:title_only": 2,
+    "tier:REVIEW": 4,
+    "reason:title_only_no_body_for_analysis": 2,
+    "llm_call:auditor": 1,
+    "verdict:SENT": 1,
+    "tier:HIGH": 1,
+    "reason:classifier_numeric_hallucination": 1,
+    "body_fetch:complete": 2,
+    "reason:aggregator_publisher:MSN": 1,
+    "reason:medium_source_no_keyword_match": 1
+  }
+}
