@@ -1,12 +1,12 @@
 {
   "date": "2026-07-18",
-  "last_updated": "2026-07-18T13:53:42.374926+00:00",
-  "runs_today": 4,
+  "last_updated": "2026-07-18T17:17:50.546839+00:00",
+  "runs_today": 5,
   "counters": {
-    "verdict:DROP": 7096,
-    "body_fetch:summary_only": 7087,
-    "reason:date_too_old": 7082,
-    "body_fetch:partial": 11,
+    "verdict:DROP": 8873,
+    "body_fetch:summary_only": 8861,
+    "reason:date_too_old": 8858,
+    "body_fetch:partial": 14,
     "llm_call:primary": 7,
     "reason:llm_no_relevant_or_buzzword_only": 1,
     "body_fetch:complete": 6,
@@ -17,7 +17,7 @@
     "reason:partial_quote_failure": 2,
     "llm_call:auditor": 2,
     "reason:self_consistency_mismatch": 1,
-    "reason:already_sent": 11,
+    "reason:already_sent": 12,
     "reason:competitor_signal_data_collection": 4,
     "verdict:SENT": 1,
     "tier:MEDIUM": 1
