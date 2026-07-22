@@ -1,0 +1,19 @@
+{
+  "date": "2026-07-22",
+  "last_updated": "2026-07-22T03:53:57.943397+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1242,
+    "body_fetch:summary_only": 1236,
+    "reason:date_too_old": 1242,
+    "body_fetch:partial": 8,
+    "llm_call:primary": 3,
+    "llm_call:auditor": 2,
+    "verdict:SENT": 2,
+    "tier:HIGH": 2,
+    "verdict:REVIEW": 1,
+    "body_fetch:complete": 1,
+    "tier:REVIEW": 1,
+    "reason:differential_disagreement_kw_no_llm_yes": 1
+  }
+}
