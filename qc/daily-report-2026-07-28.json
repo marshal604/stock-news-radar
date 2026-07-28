@@ -1,15 +1,15 @@
 {
   "date": "2026-07-28",
-  "last_updated": "2026-07-28T10:47:21.523575+00:00",
-  "runs_today": 3,
+  "last_updated": "2026-07-28T14:43:23.511266+00:00",
+  "runs_today": 4,
   "counters": {
-    "verdict:DROP": 5339,
-    "body_fetch:summary_only": 5339,
-    "reason:date_too_old": 5324,
-    "llm_call:primary": 9,
-    "verdict:REVIEW": 8,
+    "verdict:DROP": 7120,
+    "body_fetch:summary_only": 7120,
+    "reason:date_too_old": 7101,
+    "llm_call:primary": 10,
+    "verdict:REVIEW": 9,
     "body_fetch:complete": 7,
-    "tier:REVIEW": 8,
+    "tier:REVIEW": 9,
     "reason:differential_disagreement_kw_no_llm_yes": 1,
     "llm_call:auditor": 1,
     "verdict:SENT": 1,
@@ -17,9 +17,9 @@
     "reason:llm_should_not_alert": 5,
     "reason:schema_gap_suspicious_veto": 5,
     "reason:llm_no_relevant_or_buzzword_only": 1,
-    "reason:already_sent": 9,
+    "reason:already_sent": 13,
     "reason:competitor_signal_data_collection": 6,
-    "body_fetch:title_only": 2,
-    "reason:title_only_no_body_for_analysis": 1
+    "body_fetch:title_only": 3,
+    "reason:title_only_no_body_for_analysis": 2
   }
 }
