@@ -1,20 +1,22 @@
 {
   "date": "2026-08-02",
-  "last_updated": "2026-08-02T03:59:21.849862+00:00",
-  "runs_today": 1,
+  "last_updated": "2026-08-02T06:48:06.317732+00:00",
+  "runs_today": 2,
   "counters": {
-    "verdict:DROP": 1781,
-    "body_fetch:summary_only": 1775,
-    "reason:date_too_old": 1776,
-    "body_fetch:partial": 2,
-    "llm_call:primary": 5,
-    "body_fetch:complete": 4,
-    "reason:llm_should_not_alert": 4,
-    "reason:schema_gap_suspicious_veto": 4,
-    "verdict:REVIEW": 1,
-    "tier:REVIEW": 1,
-    "reason:aggregator_publisher:Yahoo! Finance Canada": 1,
+    "verdict:DROP": 3561,
+    "body_fetch:summary_only": 3554,
+    "reason:date_too_old": 3550,
+    "body_fetch:partial": 4,
+    "llm_call:primary": 6,
+    "body_fetch:complete": 5,
+    "reason:llm_should_not_alert": 5,
+    "reason:schema_gap_suspicious_veto": 5,
+    "verdict:REVIEW": 3,
+    "tier:REVIEW": 3,
+    "reason:aggregator_publisher:Yahoo! Finance Canada": 2,
     "body_fetch:title_only": 1,
-    "reason:llm_no_relevant_or_buzzword_only": 1
+    "reason:llm_no_relevant_or_buzzword_only": 1,
+    "reason:already_sent": 5,
+    "reason:competitor_signal_data_collection": 1
   }
 }
