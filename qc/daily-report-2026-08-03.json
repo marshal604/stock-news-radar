@@ -1,21 +1,22 @@
 {
   "date": "2026-08-03",
-  "last_updated": "2026-08-03T11:49:12.931744+00:00",
-  "runs_today": 3,
+  "last_updated": "2026-08-03T15:22:19.838545+00:00",
+  "runs_today": 4,
   "counters": {
-    "verdict:DROP": 5341,
-    "body_fetch:summary_only": 5339,
-    "reason:date_too_old": 5339,
-    "llm_call:primary": 4,
-    "llm_call:auditor": 1,
-    "verdict:SENT": 1,
-    "body_fetch:complete": 4,
-    "tier:MEDIUM": 1,
+    "verdict:DROP": 7119,
+    "body_fetch:summary_only": 7117,
+    "reason:date_too_old": 7115,
+    "llm_call:primary": 6,
+    "llm_call:auditor": 3,
+    "verdict:SENT": 3,
+    "body_fetch:complete": 6,
+    "tier:MEDIUM": 3,
     "reason:llm_should_not_alert": 1,
     "reason:schema_gap_suspicious_veto": 1,
     "verdict:REVIEW": 1,
     "tier:REVIEW": 1,
     "reason:differential_disagreement_kw_no_llm_yes": 1,
-    "reason:llm_no_relevant_or_buzzword_only": 1
+    "reason:llm_no_relevant_or_buzzword_only": 1,
+    "reason:already_sent": 2
   }
 }
