@@ -1,0 +1,24 @@
+{
+  "date": "2026-08-08",
+  "last_updated": "2026-08-08T02:26:56.694873+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1771,
+    "body_fetch:summary_only": 1767,
+    "reason:date_too_old": 1770,
+    "body_fetch:partial": 4,
+    "llm_call:primary": 5,
+    "llm_call:auditor": 3,
+    "verdict:SENT": 2,
+    "tier:HIGH": 1,
+    "verdict:REVIEW": 2,
+    "body_fetch:title_only": 2,
+    "tier:REVIEW": 2,
+    "reason:title_only_no_body_for_analysis": 1,
+    "reason:llm_should_not_alert": 1,
+    "reason:schema_gap_suspicious_veto": 1,
+    "body_fetch:complete": 2,
+    "tier:MEDIUM": 1,
+    "reason:self_consistency_mismatch": 1
+  }
+}
