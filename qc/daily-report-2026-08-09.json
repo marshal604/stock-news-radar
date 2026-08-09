@@ -1,22 +1,23 @@
 {
   "date": "2026-08-09",
-  "last_updated": "2026-08-09T05:26:16.853745+00:00",
-  "runs_today": 2,
+  "last_updated": "2026-08-09T09:05:59.388464+00:00",
+  "runs_today": 3,
   "counters": {
-    "verdict:DROP": 3549,
-    "body_fetch:summary_only": 3546,
-    "reason:date_too_old": 3544,
-    "body_fetch:partial": 5,
-    "llm_call:primary": 5,
+    "verdict:DROP": 5324,
+    "body_fetch:summary_only": 5321,
+    "reason:date_too_old": 5315,
+    "body_fetch:partial": 7,
+    "llm_call:primary": 6,
     "reason:llm_no_relevant_or_buzzword_only": 2,
-    "verdict:REVIEW": 3,
-    "tier:REVIEW": 3,
-    "reason:aggregator_publisher:Yahoo Finance": 2,
-    "llm_call:auditor": 3,
-    "verdict:SENT": 2,
-    "body_fetch:complete": 3,
-    "tier:MEDIUM": 2,
+    "verdict:REVIEW": 5,
+    "tier:REVIEW": 5,
+    "reason:aggregator_publisher:Yahoo Finance": 3,
+    "llm_call:auditor": 4,
+    "verdict:SENT": 3,
+    "body_fetch:complete": 4,
+    "tier:MEDIUM": 3,
     "reason:self_consistency_mismatch": 1,
-    "reason:already_sent": 3
+    "reason:already_sent": 7,
+    "reason:aggregator_publisher:Yahoo Finance Singapore": 1
   }
 }
