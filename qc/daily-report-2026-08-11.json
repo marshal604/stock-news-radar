@@ -1,24 +1,25 @@
 {
   "date": "2026-08-11",
-  "last_updated": "2026-08-11T17:16:16.864023+00:00",
-  "runs_today": 5,
+  "last_updated": "2026-08-11T21:07:09.916241+00:00",
+  "runs_today": 6,
   "counters": {
-    "verdict:DROP": 8328,
-    "body_fetch:summary_only": 8327,
-    "reason:date_too_old": 8310,
+    "verdict:DROP": 10100,
+    "body_fetch:summary_only": 10099,
+    "reason:date_too_old": 10081,
     "llm_call:primary": 5,
     "llm_call:auditor": 2,
-    "verdict:REVIEW": 4,
-    "body_fetch:partial": 4,
-    "tier:REVIEW": 4,
+    "verdict:REVIEW": 5,
+    "body_fetch:partial": 5,
+    "tier:REVIEW": 5,
     "reason:self_consistency_mismatch": 1,
     "verdict:SENT": 1,
     "body_fetch:complete": 2,
     "tier:MEDIUM": 1,
     "reason:llm_should_not_alert": 2,
     "reason:schema_gap_suspicious_veto": 2,
-    "reason:already_sent": 15,
+    "reason:already_sent": 16,
     "reason:competitor_signal_data_collection": 3,
-    "reason:llm_no_relevant_or_buzzword_only": 1
+    "reason:llm_no_relevant_or_buzzword_only": 1,
+    "reason:aggregator_publisher:24/7 Wall St.": 1
   }
 }
