@@ -1,11 +1,11 @@
 {
   "date": "2026-08-13",
-  "last_updated": "2026-08-13T17:18:26.055454+00:00",
-  "runs_today": 5,
+  "last_updated": "2026-08-13T21:06:57.746795+00:00",
+  "runs_today": 6,
   "counters": {
-    "verdict:DROP": 8844,
-    "body_fetch:summary_only": 8849,
-    "reason:date_too_old": 8821,
+    "verdict:DROP": 10617,
+    "body_fetch:summary_only": 10622,
+    "reason:date_too_old": 10589,
     "llm_call:primary": 18,
     "body_fetch:complete": 15,
     "reason:llm_no_relevant_or_buzzword_only": 3,
@@ -21,7 +21,7 @@
     "reason:aggregator_publisher:Yahoo Finance Singapore": 3,
     "body_fetch:title_only": 3,
     "reason:title_only_no_body_for_analysis": 3,
-    "reason:already_sent": 19,
+    "reason:already_sent": 24,
     "reason:competitor_signal_data_collection": 2,
     "reason:partial_quote_failure": 1
   }
