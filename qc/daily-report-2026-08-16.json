@@ -1,12 +1,12 @@
 {
   "date": "2026-08-16",
-  "last_updated": "2026-08-16T13:03:55.131941+00:00",
-  "runs_today": 4,
+  "last_updated": "2026-08-16T16:44:37.777046+00:00",
+  "runs_today": 5,
   "counters": {
-    "verdict:DROP": 7089,
-    "body_fetch:summary_only": 7079,
-    "reason:date_too_old": 7080,
-    "body_fetch:partial": 8,
+    "verdict:DROP": 8862,
+    "body_fetch:summary_only": 8850,
+    "reason:date_too_old": 8852,
+    "body_fetch:partial": 10,
     "llm_call:primary": 4,
     "llm_call:auditor": 2,
     "verdict:SENT": 1,
@@ -17,6 +17,6 @@
     "verdict:REVIEW": 1,
     "tier:REVIEW": 1,
     "reason:self_consistency_mismatch": 1,
-    "reason:already_sent": 7
+    "reason:already_sent": 8
   }
 }
