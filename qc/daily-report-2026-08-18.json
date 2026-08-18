@@ -1,0 +1,20 @@
+{
+  "date": "2026-08-18",
+  "last_updated": "2026-08-18T01:54:53.988813+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1766,
+    "body_fetch:summary_only": 1765,
+    "reason:date_too_old": 1765,
+    "llm_call:primary": 3,
+    "llm_call:auditor": 1,
+    "verdict:SENT": 1,
+    "body_fetch:complete": 2,
+    "tier:HIGH": 1,
+    "reason:llm_no_relevant_or_buzzword_only": 1,
+    "verdict:REVIEW": 1,
+    "body_fetch:title_only": 1,
+    "tier:REVIEW": 1,
+    "reason:title_only_no_body_for_analysis": 1
+  }
+}
