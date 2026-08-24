@@ -1,12 +1,12 @@
 {
   "date": "2026-08-24",
-  "last_updated": "2026-08-24T05:05:24.622799+00:00",
-  "runs_today": 2,
+  "last_updated": "2026-08-24T09:07:34.159101+00:00",
+  "runs_today": 3,
   "counters": {
-    "verdict:DROP": 3547,
-    "body_fetch:summary_only": 3540,
-    "reason:date_too_old": 3539,
-    "body_fetch:partial": 7,
+    "verdict:DROP": 5324,
+    "body_fetch:summary_only": 5314,
+    "reason:date_too_old": 5310,
+    "body_fetch:partial": 10,
     "llm_call:primary": 6,
     "llm_call:auditor": 4,
     "verdict:REVIEW": 4,
@@ -18,6 +18,6 @@
     "reason:llm_should_not_alert": 2,
     "reason:schema_gap_suspicious_veto": 2,
     "reason:aggregator_publisher:Yahoo Finance": 1,
-    "reason:already_sent": 6
+    "reason:already_sent": 12
   }
 }
