@@ -1,0 +1,18 @@
+{
+  "date": "2026-08-31",
+  "last_updated": "2026-08-31T05:46:55.766554+00:00",
+  "runs_today": 1,
+  "counters": {
+    "verdict:DROP": 1770,
+    "body_fetch:summary_only": 1770,
+    "reason:date_too_old": 1770,
+    "llm_call:primary": 2,
+    "llm_call:auditor": 2,
+    "verdict:REVIEW": 1,
+    "body_fetch:complete": 2,
+    "tier:REVIEW": 1,
+    "reason:self_consistency_mismatch": 1,
+    "verdict:SENT": 1,
+    "tier:MEDIUM": 1
+  }
+}
