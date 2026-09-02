@@ -1,20 +1,26 @@
 {
   "date": "2026-09-02",
-  "last_updated": "2026-09-02T04:46:00.805788+00:00",
-  "runs_today": 1,
+  "last_updated": "2026-09-02T12:51:22.281017+00:00",
+  "runs_today": 2,
   "counters": {
-    "verdict:DROP": 1751,
-    "body_fetch:summary_only": 1756,
-    "reason:date_too_old": 1751,
-    "body_fetch:partial": 2,
+    "verdict:DROP": 3523,
+    "body_fetch:summary_only": 3523,
+    "reason:date_too_old": 3512,
+    "body_fetch:partial": 6,
     "verdict:DEFER": 5,
     "reason:max_items_per_run_exceeded:medium": 5,
-    "llm_call:primary": 19,
-    "verdict:REVIEW": 20,
-    "body_fetch:complete": 17,
-    "tier:REVIEW": 20,
+    "llm_call:primary": 24,
+    "verdict:REVIEW": 21,
+    "body_fetch:complete": 22,
+    "tier:REVIEW": 21,
     "reason:llm_error:LLM classification failed after 3 attempts: claude CLI exit=1 stderr='' stdout=\"You've hit your limit · resets 7am (UTC)\\n\"": 19,
     "reason:competitor_signal_data_collection": 1,
-    "body_fetch:title_only": 1
+    "body_fetch:title_only": 1,
+    "reason:already_sent": 10,
+    "llm_call:auditor": 4,
+    "verdict:SENT": 3,
+    "tier:MEDIUM": 3,
+    "reason:self_consistency_mismatch": 1,
+    "reason:llm_no_relevant_or_buzzword_only": 1
   }
 }
