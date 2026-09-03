@@ -1,109 +1,109 @@
-name: poll
+# name: poll
 
-on:
-  schedule:
-    # Every 4 hours, offset to :17 minute to avoid GitHub Actions integer-hour
-    # peak load — cron runs at exact-hour minutes get skipped on personal repos.
-    # Effective times: UTC 00:17 / 04:17 / 08:17 / 12:17 / 16:17 / 20:17
-    # TW (UTC+8):       08:17 / 12:17 / 16:17 / 20:17 / 00:17 / 04:17
-    - cron: "17 */4 * * *"
-  workflow_dispatch:
+# on:
+#   schedule:
+#     # Every 4 hours, offset to :17 minute to avoid GitHub Actions integer-hour
+#     # peak load — cron runs at exact-hour minutes get skipped on personal repos.
+#     # Effective times: UTC 00:17 / 04:17 / 08:17 / 12:17 / 16:17 / 20:17
+#     # TW (UTC+8):       08:17 / 12:17 / 16:17 / 20:17 / 00:17 / 04:17
+#     - cron: "17 */4 * * *"
+#   workflow_dispatch:
 
-permissions:
-  contents: write   # for the commit-daily-report step
+# permissions:
+#   contents: write   # for the commit-daily-report step
 
-concurrency:
-  group: poll
-  cancel-in-progress: false
+# concurrency:
+#   group: poll
+#   cancel-in-progress: false
 
-env:
-  # Bump to force cache invalidation when you want a newer CLI.
-  CLAUDE_CODE_VERSION: "2.1.121"
+# env:
+#   # Bump to force cache invalidation when you want a newer CLI.
+#   CLAUDE_CODE_VERSION: "2.1.121"
 
-jobs:
-  poll:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
+# jobs:
+#   poll:
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 10
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - id: date
-        run: echo "today=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+#       - id: date
+#         run: echo "today=$(date -u +%F)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
+#       - uses: actions/setup-python@v5
+#         with:
+#           python-version: "3.12"
+#           cache: pip
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
+#       - uses: actions/setup-node@v4
+#         with:
+#           node-version: "20"
 
-      - name: Configure npm to user prefix (cacheable)
-        run: |
-          mkdir -p "$HOME/.npm-global"
-          npm config set prefix "$HOME/.npm-global"
-          echo "$HOME/.npm-global/bin" >> "$GITHUB_PATH"
+#       - name: Configure npm to user prefix (cacheable)
+#         run: |
+#           mkdir -p "$HOME/.npm-global"
+#           npm config set prefix "$HOME/.npm-global"
+#           echo "$HOME/.npm-global/bin" >> "$GITHUB_PATH"
 
-      - name: Cache claude-code CLI
-        id: cache-claude
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm-global
-          key: claude-code-${{ runner.os }}-${{ env.CLAUDE_CODE_VERSION }}
+#       - name: Cache claude-code CLI
+#         id: cache-claude
+#         uses: actions/cache@v4
+#         with:
+#           path: ~/.npm-global
+#           key: claude-code-${{ runner.os }}-${{ env.CLAUDE_CODE_VERSION }}
 
-      - name: Install claude-code (on cache miss only)
-        if: steps.cache-claude.outputs.cache-hit != 'true'
-        run: npm install -g "@anthropic-ai/claude-code@${{ env.CLAUDE_CODE_VERSION }}"
+#       - name: Install claude-code (on cache miss only)
+#         if: steps.cache-claude.outputs.cache-hit != 'true'
+#         run: npm install -g "@anthropic-ai/claude-code@${{ env.CLAUDE_CODE_VERSION }}"
 
-      - name: Install python deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+#       - name: Install python deps
+#         run: |
+#           python -m pip install --upgrade pip
+#           pip install -r requirements.txt
 
-      - name: Restore seen-state cache
-        uses: actions/cache@v4
-        with:
-          path: data/
-          key: seen-${{ steps.date.outputs.today }}-${{ github.run_id }}
-          restore-keys: |
-            seen-${{ steps.date.outputs.today }}-
+#       - name: Restore seen-state cache
+#         uses: actions/cache@v4
+#         with:
+#           path: data/
+#           key: seen-${{ steps.date.outputs.today }}-${{ github.run_id }}
+#           restore-keys: |
+#             seen-${{ steps.date.outputs.today }}-
 
-      - name: Run pipeline
-        env:
-          # GH Secrets occasionally pick up trailing newlines on paste; strip
-          # whitespace defensively so the value can't break HTTP auth headers.
-          CLAUDE_CODE_OAUTH_TOKEN_RAW: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          DISCORD_WEBHOOK_URL_RAW: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          FINNHUB_API_KEY_RAW: ${{ secrets.FINNHUB_API_KEY }}
-        run: |
-          export CLAUDE_CODE_OAUTH_TOKEN="$(printf '%s' "$CLAUDE_CODE_OAUTH_TOKEN_RAW" | tr -d '[:space:]')"
-          export DISCORD_WEBHOOK_URL="$(printf '%s' "$DISCORD_WEBHOOK_URL_RAW" | tr -d '[:space:]')"
-          export FINNHUB_API_KEY="$(printf '%s' "$FINNHUB_API_KEY_RAW" | tr -d '[:space:]')"
-          python -m src.main
+#       - name: Run pipeline
+#         env:
+#           # GH Secrets occasionally pick up trailing newlines on paste; strip
+#           # whitespace defensively so the value can't break HTTP auth headers.
+#           CLAUDE_CODE_OAUTH_TOKEN_RAW: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+#           DISCORD_WEBHOOK_URL_RAW: ${{ secrets.DISCORD_WEBHOOK_URL }}
+#           FINNHUB_API_KEY_RAW: ${{ secrets.FINNHUB_API_KEY }}
+#         run: |
+#           export CLAUDE_CODE_OAUTH_TOKEN="$(printf '%s' "$CLAUDE_CODE_OAUTH_TOKEN_RAW" | tr -d '[:space:]')"
+#           export DISCORD_WEBHOOK_URL="$(printf '%s' "$DISCORD_WEBHOOK_URL_RAW" | tr -d '[:space:]')"
+#           export FINNHUB_API_KEY="$(printf '%s' "$FINNHUB_API_KEY_RAW" | tr -d '[:space:]')"
+#           python -m src.main
 
-      - name: Commit daily report back to repo
-        if: success()
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          find qc -name 'daily-report-*.json' -exec git add -f {} + 2>/dev/null || true
-          if git diff --cached --quiet; then
-            echo "no daily-report changes to commit"
-            exit 0
-          fi
-          git commit -m "chore(qc): daily report $(date -u +%F) [skip ci]"
-          git pull --rebase origin main
-          git push
+#       - name: Commit daily report back to repo
+#         if: success()
+#         run: |
+#           set -euo pipefail
+#           git config user.name "github-actions[bot]"
+#           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+#           find qc -name 'daily-report-*.json' -exec git add -f {} + 2>/dev/null || true
+#           if git diff --cached --quiet; then
+#             echo "no daily-report changes to commit"
+#             exit 0
+#           fi
+#           git commit -m "chore(qc): daily report $(date -u +%F) [skip ci]"
+#           git pull --rebase origin main
+#           git push
 
-      - name: Upload QC artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: qc-${{ github.run_id }}
-          path: |
-            qc/daily-report-*.json
-            data/processed-log-*.ndjson
-          if-no-files-found: ignore
-          retention-days: 14
+#       - name: Upload QC artifacts
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: qc-${{ github.run_id }}
+#           path: |
+#             qc/daily-report-*.json
+#             data/processed-log-*.ndjson
+#           if-no-files-found: ignore
+#           retention-days: 14
